@@ -14,7 +14,7 @@ feishu-aide 做三件事：
 
 三个直接后果：
 
-1. **PR CI 必须离线**：飞书 API 全部走 fake server 或录制 fixture；真实凭证只用于定时 canary，不进入 PR workflow。
+1. **PR 的业务测试必须离线**（依赖安装仍走 npm registry）：飞书 API 全部走 fake server 或录制 fixture；真实凭证只用于定时 canary，不进入 PR workflow。
 2. **测试重点转向同步正确性**：分页、429、增量、删除、权限、路径清洗、索引迁移，比“构建产物是否提交”更容易造成用户可见的错误。
 3. **凭证与缓存是新的安全边界**：app_secret / user token 不进仓库和日志；本地缓存可能含敏感文档，测试和产物上传都要避开。
 
@@ -67,7 +67,7 @@ feishu-aide 做三件事：
 
 | 条目 | 作用（机制） | 复用后的价值 |
 |---|---|---|
-| Fake Feishu server | 用 `node:http` 实现 auth、wiki nodes、docx 内容等端点；支持分页、429/5xx/403 注入；客户端 base URL 可注入。 | PR CI 完全离线、可复现；能跑完整“认证→遍历→拉取→落盘→索引”链路，不依赖真实租户和 secrets。 |
+| Fake Feishu server | 用 `node:http` 实现 auth、wiki nodes、docx 内容等端点；支持分页、429/5xx/403 注入；客户端 base URL 可注入。 | 业务测试完全离线、可复现；能跑完整“认证→遍历→拉取→落盘→索引”链路，不依赖真实租户和 secrets。 |
 | Fixture 脱敏与回放 | 录制真实响应后替换 token、人名、文档正文；契约测试直接解析 fixture。 | 拿到真实 API 形状，又不把租户数据提交进仓库；fixture 可 review、可 diff。 |
 | Feishu API 契约测试 | fixture → typed model；未知字段容忍，必需字段断言。 | 飞书 API 变更时在 parser 层红，而不是用户同步到一半崩。 |
 | 分页/cursor | 多页、空页、重复 cursor、`page_size` 边界、`has_more`。 | 漏页和死循环是同步工具最常见的线上 bug；单测最便宜。 |
@@ -113,7 +113,7 @@ feishu-aide 做三件事：
 
 ## 4. 推荐的 CI 分层
 
-### 4.1 PR CI（离线，双 OS）
+### 4.1 PR CI（业务测试离线，双 OS）
 
 ```yaml
 name: CI
@@ -247,14 +247,14 @@ jobs:
 ## 6. 落地顺序
 
 - **P0（done）**：仓库骨架 + 本方案。
-- **P1**：CI 骨架 + secret scan + unit tests + 分支清理；PR CI 离线，不依赖业务代码形态。
+- **P1**：CI 骨架 + secret scan + unit tests + 分支清理；PR 业务测试离线，不依赖业务代码形态。
 - **P2**：fake Feishu server + contract/integration；分页、429、403、增量幂等、路径安全。
 - **P3**：本地索引 + 迁移 + 检索 golden；MCP/CLI smoke；按分发形态加 dist/pack 检查。
 - **P4**：docs SSOT + 工具契约 + 定时 live canary。
 
 ## 7. 验收清单
 
-- [ ] PR CI 不访问外网；没有 secrets 也能跑完整同步链路。
+- [ ] PR 业务测试不访问飞书外网（`pnpm install` 除外）；没有 secrets 也能跑完整同步链路。
 - [ ] 同一 wiki 同步两次 → 无重复、无丢失；更新/删除/移动各一条测试。
 - [ ] 429 按 `Retry-After` 退避，有上限；不可重试的 4xx 不重试。
 - [ ] 单节点 403 不终止全量，报告 skipped。
