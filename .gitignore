@@ -21,7 +21,18 @@ node_modules/
 
 # Logs and local test output
 *.log
+logs/
 coverage/
+tmp/
 
-# Build outputs are intentionally NOT ignored: DSH plugins installed from git
-# run the committed bundle. See docs/CI-REUSE-PLAN.md.
+# Build and type-check output
+dist/
+*.tsbuildinfo
+
+# Local document cache and SQLite indexes
+.feishu-aide/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3

@@ -1,0 +1,35 @@
+{
+  "name": "feishu-aide",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Feishu docs and wiki access with a local retrieval cache for mmw-tools / DeepSeek Harness agents.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "pnpm typecheck && pnpm test:unit && pnpm test:policy",
+    "test:unit": "tsx --test test/unit/path-safety.test.ts",
+    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check": "pnpm check:secrets && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.0"
+  }
+}

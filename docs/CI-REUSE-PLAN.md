@@ -1,6 +1,6 @@
 # CI 与仓库工程设计复用方案
 
-Status: proposal v2 (2026-11-14) — 按“飞书文档/知识库获取 + 本地检索”定位修订
+Status: proposal v2.1 (2026-11-14) — P1 已落地；P2 起按本文顺序推进。
 
 v1 假设 feishu-aide 是带客户端 bundle 的 DSH 插件。实际定位是**给 mmw-tools / DSH agent 用的飞书内容获取与本地检索工具**：联网读取飞书文档和 wiki 知识库，增量拉到本地，建立索引，供 agent 检索和读取。这个定位改变了 CI 的风险排序：最高风险不再是“提交的 bundle 过期”，而是“PR CI 依赖真实飞书”“同步/分页/限流逻辑错”“本地缓存路径与检索质量”。
 
@@ -25,16 +25,16 @@ feishu-aide 做三件事：
 3. `committed-bundle drift` / `pack` / `namespace` 只在选定分发形态后启用，不要先假设。
 4. docs SSOT 和 contracts 仍后置，但 Feishu API 映射、同步语义、认证模型三类文档值得早写。
 
-## 2. 前提与待定
+## 2. 已定决策（2026-11-14）
 
-| 决策 | 当前建议 | 对 CI 的影响 |
+| 决策 | 结论 | 对 CI 的影响 |
 |---|---|---|
-| 分发形态 | 先 core library + stdio MCP server；CLI 后加 | MCP smoke + pack；若从 git 安装且提交 dist，再加 drift 检查 |
-| 认证 | v1 用 tenant_access_token（应用机器人加入知识库）；user_access_token 作为后续 | fake token provider；refresh/expiry 测试 |
+| 分发形态 | core library + stdio MCP server；CLI 后加 | P3 加 MCP smoke + pack；若从 git 安装且提交 dist，再加 drift 检查 |
+| 认证 | v1 用 tenant_access_token（应用机器人加入知识库）；user_access_token 后续 | fake token provider；refresh/expiry 测试 |
 | 存储 | 本地文件 + SQLite FTS5（trigram）；v1 不做 embedding | 迁移/损坏恢复测试；检索确定性 |
 | 同步范围 | wiki 空间 + docx；sheets/bitable 后置 | fake server 路由范围可控 |
 
-认证补充：mmw-tools 的飞书 OAuth 只把 `access_token` 用于 `fetchUserInfo`，没有持久化（`mmw-tools-auth/src/auth.mjs:182-187`、`mmw-tools-auth/src/feishu.mjs:43-78`）。所以“复用现有登录直接拿文档权限”不能直接成立；要么给 auth core 加 token 存储/刷新，要么 feishu-aide 自己做 OAuth，要么 v1 用 tenant token。这个选择要在写代码前定。
+认证补充：mmw-tools 的飞书 OAuth 只把 `access_token` 用于 `fetchUserInfo`，没有持久化（`mmw-tools-auth/src/auth.mjs:182-187`、`mmw-tools-auth/src/feishu.mjs:43-78`）。所以“复用现有登录直接拿文档权限”不能直接成立；要么给 auth core 加 token 存储/刷新，要么 feishu-aide 自己做 OAuth，要么 v1 用 tenant token。v1 已定为 tenant token；user token 需求出现时再补存储/刷新与对应测试。
 
 存储补充：本机 Node 24.11 的 `node:sqlite` 已验证支持 FTS5 和 `tokenize='trigram'`，中文 substring 检索可用；CI 需要固定 Node 24，并覆盖一次 FTS5 建表，避免 runner 的 SQLite 构建差异到运行时才暴露。
 
@@ -156,17 +156,16 @@ jobs:
       - name: Secret scan（无依赖，先跑）
         run: node scripts/check-secrets.mjs
 
+      - name: Branch cleanup and secret-scan policy tests（无依赖）
+        run: pnpm test:policy
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build
-      - run: pnpm test:contract
-      - run: pnpm test:integration
-      - run: pnpm test:smoke
-      - run: pnpm test:retrieval
 
-      - name: Check committed dist
-        run: node scripts/check-dist-drift.mjs   # 只有提交 dist 时才启用
+      # P2 追加：test:contract / test:integration（fake Feishu）
+      # P3 追加：test:smoke / test:retrieval；按分发形态决定 dist drift / pack
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -176,14 +175,15 @@ jobs:
             dist/
             logs/
           retention-days: 7
+          if-no-files-found: ignore
 ```
 
 说明：
 
 - `fetch-depth` 先用默认 1；等 `doc-impact` 这类基于 base 的检查落地，再对该 job 设 `0`。
-- 测试顺序按反馈速度排，不照抄 mmw-tools 的具体步骤；`test:integration` 自己启动 fake server，不读 secrets。
+- 单测用 `tsx` 直接跑源码，所以 `build` 放在测试之后；它验证“能否产出 dist”，不是测试前置。
 - 失败产物只传 `dist/` 和脱敏日志；本地缓存目录不进 artifact。
-- 如果测试需要构建产物，`build` 放在 `contract/integration` 之前；如果测试用 `tsx` 直接跑源码，可把 build 后移。
+- 不给未实现的测试加空 step：没有断言的绿比红更糟。
 
 ### 4.2 定时 live canary（不进 PR）
 
@@ -246,8 +246,16 @@ jobs:
 
 ## 6. 落地顺序
 
+### P1 落地清单（2026-11-14，done）
+
+- `.github/workflows/ci.yml`：双 OS；secret scan + 策略单测在 install 前；typecheck / unit / build；失败只传 `dist/` 与脱敏日志。
+- `scripts/check-secrets.mjs` + `scripts/check-secrets.test.mjs`：凭证形态扫描；禁止 `.env`、私钥、本地 `.db` 被跟踪；命中时不打印凭证值。
+- `scripts/prune-merged-branches.mjs` + test、`.github/workflows/branch-cleanup.yml`：保守删除策略，默认 dry run。
+- `src/core/path-safety.ts` + `test/unit/path-safety.test.ts`：标题清洗、Windows 保留名/尾随点/超长、根目录逃逸。
+- `package.json` / `tsconfig*.json` / `pnpm-lock.yaml`：Node 24 + pnpm 10 + `tsx` + `tsc`；`dist/` 不进仓库。
+
 - **P0（done）**：仓库骨架 + 本方案。
-- **P1**：CI 骨架 + secret scan + unit tests + 分支清理；PR 业务测试离线，不依赖业务代码形态。
+- **P1（done）**：CI 骨架 + secret scan + unit tests + 分支清理；PR 业务测试离线，不依赖业务代码形态。
 - **P2**：fake Feishu server + contract/integration；分页、429、403、增量幂等、路径安全。
 - **P3**：本地索引 + 迁移 + 检索 golden；MCP/CLI smoke；按分发形态加 dist/pack 检查。
 - **P4**：docs SSOT + 工具契约 + 定时 live canary。
@@ -266,10 +274,12 @@ jobs:
 - [ ] MCP/CLI smoke 通过。
 - [ ] 若 git/npm 分发：dist 与源码同步，pack 含入口。
 
-## 8. 需要你定的几件事
+## 8. 决策记录
 
-1. **分发形态**：MCP server / CLI / library / service？
-2. **认证**：tenant token（bot 加入知识库）还是 user token（需自己 OAuth 或扩展 mmw-tools-auth）？
-3. **存储与检索**：文件 + SQLite FTS5 trigram？是否需要语义检索/embedding？
-4. **同步范围**：wiki 全空间 / 指定节点 / 文档链接？是否含 sheets/bitable？
-5. **是否要常驻服务/Webhook**：如果要，CI 还要加签名校验和常驻进程测试。
+2026-11-14 已定：core library + stdio MCP server（CLI 后加）；`tenant_access_token` v1；本地文件 + SQLite FTS5 trigram，不做 embedding；wiki + docx，sheets/bitable 后置。
+
+后续再定：
+
+1. **user token**：个人文档或 bot 无权限的空间出现时，给 auth core 加 token 存储/刷新，还是 feishu-aide 自己做 OAuth。
+2. **sheets/bitable**：是否扩展同步范围；扩展后 fake server 路由与契约测试随之增加。
+3. **分发/常驻**：是否发布 npm、是否需要 Webhook/常驻服务；需要时再加 pack/drift、签名校验和常驻进程测试。

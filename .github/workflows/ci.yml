@@ -1,0 +1,67 @@
+name: CI
+
+# P1: offline checks only. Feishu API tests, a fake server, retrieval golden
+# tests, and the MCP smoke test are added in P2/P3 when their code exists;
+# adding empty steps now would only create fake green checks.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      # No dependencies needed: a leaked token should fail before installation.
+      - name: Secret scan
+        run: node scripts/check-secrets.mjs
+
+      # Policy code is plain ESM; test it before the package manager can fail.
+      - name: Branch cleanup and secret-scan policy tests
+        run: pnpm test:policy
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+      - run: pnpm build
+
+      # Only build output and redacted logs are uploaded. Never upload the
+      # local document cache: it can contain tenant content.
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-${{ matrix.os }}
+          path: |
+            dist/
+            logs/
+          retention-days: 7
+          if-no-files-found: ignore
