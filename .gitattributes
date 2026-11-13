@@ -1,0 +1,9 @@
+# The repository is developed on Windows and verified on Linux CI. Keep LF in
+# scripts, workflows and docs so a CRLF checkout cannot break a shebang or YAML.
+*.sh text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf

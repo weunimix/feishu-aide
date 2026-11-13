@@ -1,0 +1,27 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Local secrets — never commit
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Logs and local test output
+*.log
+coverage/
+
+# Build outputs are intentionally NOT ignored: DSH plugins installed from git
+# run the committed bundle. See docs/CI-REUSE-PLAN.md.
