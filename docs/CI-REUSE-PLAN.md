@@ -144,9 +144,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 版本由 package.json 的 packageManager 固定；再传 version 会冲突
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -203,9 +202,8 @@ jobs:
     environment: feishu-live
     steps:
       - uses: actions/checkout@v4
+      # 版本由 package.json 的 packageManager 固定；再传 version 会冲突
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 24
