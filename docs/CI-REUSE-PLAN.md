@@ -142,11 +142,11 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 版本由 package.json 的 packageManager 固定；再传 version 会冲突
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -166,7 +166,7 @@ jobs:
       # P2 追加：test:contract / test:integration（fake Feishu）
       # P3 追加：test:smoke / test:retrieval；按分发形态决定 dist drift / pack
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: failure-${{ matrix.os }}
@@ -201,10 +201,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: feishu-live
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # 版本由 package.json 的 packageManager 固定；再传 version 会冲突
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
