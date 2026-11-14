@@ -1,6 +1,6 @@
 # 仓库设置基线（Repo settings as code）
 
-Status: 2026-11-14 起草。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；本文件撰写时未逐条核对。**
+Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；数值变化没有 diff，靠本文件的核对记录与将来的 `repo-audit.yml` 兜底。**
 
 为什么要有这份文件：分支保护、合并方式、secret scanning 这些开关不随 `git clone` 走，在 UI 上改一次没有任何 diff，门禁被拆了也没人知道。P1 计划加每周 `repo-audit.yml` 用 API 断言这些值（见 §8），在那之前靠这份清单人工核对。
 
@@ -34,6 +34,8 @@ gh api -X PATCH repos/mmw-devs/feishu-aide \
   -F allow_auto_merge=true -F delete_branch_on_merge=true
 ```
 
+已于 2026-11-14 应用，当前值与上表一致（`has_wiki` / `has_projects` / `has_discussions` 同时关闭）。注意：PR #1 是在本规则生效前用手动 merge commit 合的，`main` 历史里因此有一个 merge commit；此后只允许 squash。
+
 ## 2. `main` 的分支规则（Ruleset）
 
 用 ruleset 而不是旧版 branch protection：支持导出、支持 tag、语义更清楚。
@@ -60,6 +62,8 @@ gh api repos/mmw-devs/feishu-aide/rulesets
 gh api repos/mmw-devs/feishu-aide/rulesets/<id>
 ```
 
+现状（2026-11-14）：规则集 `main-protection`（id `27264463`），`enforcement: active`，`bypass_actors` 为空（管理员也不绕过）；`strict_required_status_checks_policy: true`；`allowed_merge_methods: ["squash"]`。注意 GitHub 默认开启了 `require_extra_approval_for_unattributed_changes`：将来的机器人/未归属提交若被判定为 unattributed，合入需要额外 approve，届时要么调整该参数，要么保证提交带有归属。
+
 P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比对基线。
 
 ## 3. Tags
@@ -68,6 +72,8 @@ P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比�
 |---|---|---|
 | 保护 `v*` | 禁止删除、禁止强制更新 | 发布标签一旦推出就不该被改指向 |
 | 创建权限 | 维护者手动 | 发布流程落地后再自动化 |
+
+现状（2026-11-14）：规则集 `tag-protection`（id `27264465`），匹配 `refs/tags/v*`，禁止删除与更新。**仓库尚无 tag，规则未实测**；第一个 `v*` tag 出现时再验证一次。
 
 ## 4. GitHub Actions
 
@@ -87,6 +93,10 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions
 gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 ```
 
+现状（2026-11-14）：`allowed_actions: selected`，`github_owned_allowed: true`，`verified_allowed: true`，`patterns_allowed: ["pnpm/action-setup@*"]`；`default_workflow_permissions: read`，`can_approve_pull_request_reviews: false`；artifact/log retention 14 天（上限 90）。`sha_pinning_required: false`——等 P1 把 actions 固定到 SHA 后再打开。
+
+**实测坑**：只勾 GitHub-owned + verified 时，`pnpm/action-setup@v6` 不在 verified 名单，workflow 直接 `startup_failure`（0 job，run 43602247721），不是普通的 step 失败。必须显式加 `pnpm/action-setup@*` pattern；改 allowlist 后务必用 `gh workflow run ci.yml` 实测一次，别只看设置页。
+
 ## 5. 安全
 
 | 设置 | 期望值 | 说明 |
@@ -97,6 +107,8 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 | Dependabot security updates | **on** | 自动开升级 PR |
 | Private vulnerability reporting | **on** | 配 `SECURITY.md` 使用（待补） |
 | Code scanning / CodeQL | P1 再加 | TS 默认查询集即可 |
+
+现状（2026-11-14）：secret scanning、push protection、Dependabot alerts、Dependabot security updates、private vulnerability reporting 均已开启并回读确认。**偏差**：`secret_scanning_validity_checks` 仍为 `disabled`（PATCH 返回 200 但值不变，疑似组织/计划限制），留在待办；`secret_scanning_non_provider_patterns` 未开。
 
 ## 6. 标签
 
@@ -131,6 +143,8 @@ do
 done
 ```
 
+现状（2026-11-14）：18 个标签已创建/更新（`bug` `enhancement` `docs` `ci`、5 个 `area:*`、5 个 `size/*`、`stale` `needs-info` `blocked` `good-first-issue`）；GitHub 自带的 `documentation` `duplicate` `invalid` `question` `wontfix` `help wanted` `good first issue` 保留未删。
+
 ## 7. 里程碑
 
 P1 已完成；P2/P3/P4 建 milestone，PR 用 `Closes #` 或 milestone 挂靠，进度才可查询。
@@ -140,6 +154,8 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P2 fake Feishu + contract
 gh api repos/mmw-devs/feishu-aide/milestones -f title="P3 index + retrieval + smoke"
 gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts + live canary"
 ```
+
+现状（2026-11-14）：上述三个 milestone 已创建；P1 没有对应 milestone（已完成，不需要追溯）。
 
 ## 8. 自动化（P1）
 
@@ -154,3 +170,4 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 | 日期 | 核对人 | 结果 |
 |---|---|---|
 | 2026-11-14 | 起草 | **未核对**（本地工作副本读不到仓库设置） |
+| 2026-11-14 | weunimix / agent（gh api） | **已核对并应用 §1–§5**：ruleset 27264463（main）/ 27264465（tag）、merge 设置、Actions allowlist、secret scanning、标签、milestone 均回读确认。偏差 3 处：`secret_scanning_validity_checks` 无法开启；Actions 必须显式放行 `pnpm/action-setup@*`；tag 规则尚无 tag 可测。 |
