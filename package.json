@@ -22,7 +22,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "pnpm typecheck && pnpm test:unit && pnpm test:policy",
-    "test:unit": "tsx --test test/unit/path-safety.test.ts",
+    "test:unit": "tsx --test \"test/**/*.test.ts\"",
     "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check": "pnpm check:secrets && pnpm test"

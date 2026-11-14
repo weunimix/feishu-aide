@@ -1,0 +1,61 @@
+name: Bug 报告
+description: 报告可复现的错误或不一致行为
+title: "bug: "
+labels: ["bug", "needs-info"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认不是本地环境问题：Node 24 / pnpm 10，`pnpm check` 是否通过。
+        粘贴日志前请移除 token、文档正文和租户信息；涉及飞书数据时请用脱敏样例或 fake server。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 实际行为与期望行为的差异
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 最小复现最好；请写清数据形态（标题、层级、权限），不要贴真实文档内容
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / commit
+      description: 输出 `git rev-parse --short HEAD`，或对应的 tag
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 环境
+      description: 操作系统、Node、pnpm 版本
+      placeholder: Windows 11 / Node 24.11 / pnpm 10.33
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志与错误
+      description: 已脱敏的输出
+      render: text
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已移除凭证与真实租户数据
+          required: true
+        - label: 已搜索现有 issue，没有重复
+          required: true

@@ -1,0 +1,49 @@
+name: 功能 / 改进建议
+description: 提出新能力、流程改进或取舍讨论
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先确认它是否已在 [docs/CI-REUSE-PLAN.md](https://github.com/mmw-devs/feishu-aide/blob/main/docs/CI-REUSE-PLAN.md) 里；
+        如果属于已排期阶段，请直接引用对应的 P2/P3/P4 条目。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 谁在什么场景下会遇到，现在的做法为什么不够
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 可以是方向而不是完整设计；写清代价与被放弃的替代方案
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响范围
+      options:
+        - core
+        - sync
+        - search
+        - mcp
+        - cli
+        - ci
+        - docs
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 已搜索现有 issue 与计划文档，没有重复
+          required: true
