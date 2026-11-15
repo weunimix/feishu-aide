@@ -88,7 +88,8 @@ P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比�
 | Fork PR 首次贡献需批准 | on（默认） | 防未知作者直接跑 |
 | Allowed actions | GitHub-owned + verified 创作者（或明确 allowlist） | 供应链面 |
 | Artifact / log retention | 7–14 天 | 够排障即可；日志可能含内容，别久留 |
-| Actions 固定版本 | 现阶段 `@vN`；P1 起固定到 commit SHA + Dependabot 维护 | tag 可以被移动 |
+| Actions 固定版本 | **固定到完整 commit SHA**（行尾注释版本），Dependabot 维护 | tag 可以被移动；SHA 不能 |
+| `sha_pinning_required` | **on** | 新 workflow 写 `@vN` 直接失败，而不是靠 review 记得 |
 
 核对：
 
@@ -97,7 +98,7 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions
 gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 ```
 
-现状（2026-11-14）：`allowed_actions: selected`，`github_owned_allowed: true`，`verified_allowed: true`，`patterns_allowed: ["pnpm/action-setup@*"]`；`default_workflow_permissions: read`，`can_approve_pull_request_reviews: false`；artifact/log retention 14 天（上限 90）。`sha_pinning_required: false`——等 P1 把 actions 固定到 SHA 后再打开。
+现状（2026-11-15）：`allowed_actions: selected`，`github_owned_allowed: true`，`verified_allowed: true`，`patterns_allowed: ["pnpm/action-setup@*"]`；`default_workflow_permissions: read`，`can_approve_pull_request_reviews: false`；artifact/log retention 14 天（上限 90）；`sha_pinning_required: true`——workflow 里的 action 已固定到完整 SHA，升级由 [.github/dependabot.yml](../.github/dependabot.yml) 每周提 PR。
 
 **实测坑**：只勾 GitHub-owned + verified 时，`pnpm/action-setup@v6` 不在 verified 名单，workflow 直接 `startup_failure`（0 job，run 43602247721），不是普通的 step 失败。必须显式加 `pnpm/action-setup@*` pattern；改 allowlist 后务必用 `gh workflow run ci.yml` 实测一次，别只看设置页。
 

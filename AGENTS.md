@@ -23,6 +23,7 @@ feishu-aide 为 mmw-tools / DeepSeek Harness agent 提供飞书文档与 wiki �
 8. 不确定的事实（飞书 API 行为、Node 能力、GitHub 设置）先验证再写进文档或断言，不要凭记忆下结论。
 9. **一律用中文**：技术文档、代码注释、commit message、PR 标题与描述、issue、review 回复，以及日志/报错里的说明性文字，都用中文写。标识符、命令、路径、API 名、上游专有名词（如 `Conventional Commits`、`ruleset`）保持原文，不做硬翻译。历史英文提交不改写，但新内容不再用英文。
 10. **文档块必须声明源码归属**：`README.md` 与 `docs/**/*.md` 的每个二级标题块都要有 `<!-- src: ... -->` 或 `<!-- src: none -->`；改 `src/**` 前先跑 `pnpm docs:impact <path>`，新增/移动/删除源码文件后跑 `pnpm docs:map` 并提交生成物。检查只断言引用、覆盖率与生成物一致，不能用改错别字或删映射绕过。
+11. **workflow 里的 action 固定到完整 commit SHA**（行尾注释版本号），不要写 `@vN`；`sha_pinning_required` 已打开，写标签会直接失败。升级走 Dependabot PR，不手工改 SHA。
 
 ## 分支与提交
 
@@ -50,7 +51,7 @@ pnpm build
 |---|---|
 | `src/**`、`test/**` | 带测试，`pnpm check` 通过 |
 | `scripts/**`（策略代码） | 纯决策函数 + 单测；默认行为必须在安全侧（dry run、宁可保留） |
-| `.github/workflows/**` | 每个 step 说明防的失败模式；最小 `permissions`；不引用 secret |
+| `.github/workflows/**` | 每个 step 说明防的失败模式；最小 `permissions`；不引用 secret；action 固定到完整 SHA（Dependabot 维护） |
 | `docs/**`、`README.md` | 与现状一致；状态行过时就要改，下一个人/agent 会照着它做；块级 `src` 标注与 `docs/doc-map.json` 同步（`pnpm docs:map`） |
 | 根配置（`package.json`、`tsconfig*`、lockfile） | 说明动机；lockfile 与 `package.json` 同一次提交 |
 

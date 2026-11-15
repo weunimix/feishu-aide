@@ -18,11 +18,12 @@ Status: P1 (2026-11-15) — 仓库骨架、离线 CI、secret scan、分支清�
 <!-- src: src/core/path-safety.ts, src/index.ts -->
 <!-- src: scripts/check-secrets.mjs, scripts/prune-merged-branches.mjs -->
 <!-- src: scripts/check-docs.mjs, scripts/doc-impact.mjs -->
-<!-- src: .github/workflows/ci.yml, .github/workflows/branch-cleanup.yml -->
+<!-- src: .github/workflows/ci.yml, .github/workflows/branch-cleanup.yml, .github/dependabot.yml -->
 
 - `.github/workflows/ci.yml`：ubuntu + windows 双 OS；secret scan、文档块检查、策略单测、typecheck、unit test、build；PR 不读取任何飞书凭证。
 - `.github/workflows/branch-cleanup.yml` + `scripts/prune-merged-branches.mjs`：只删除证据齐全的已合并分支，默认 dry run。
 - `scripts/check-secrets.mjs`：扫描飞书/GitHub/AWS 凭证形态，并拒绝 `.env`、私钥、本地 `.db` 被跟踪。
+- 工作流里的 action 固定到完整 commit SHA（行尾注释版本），Dependabot 每周检查 pin；仓库的 `sha_pinning_required` 已打开，新 workflow 写 `@vN` 会直接失败。
 - `scripts/check-docs.mjs` + `scripts/doc-impact.mjs`：校验文档块的 `src` 标注、引用有效性与 `src/` 覆盖率，生成并比对 `docs/doc-map.json`；支持反查“改某个文件影响哪些文档块”。
 - `src/core/path-safety.ts`：不可信文档标题的路径清洗与根目录逃逸防护，含单测。
 

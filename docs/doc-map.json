@@ -100,6 +100,7 @@
         "anchor": "当前已落地",
         "heading": "当前已落地",
         "src": [
+          ".github/dependabot.yml",
           ".github/workflows/branch-cleanup.yml",
           ".github/workflows/ci.yml",
           "scripts/check-docs.mjs",

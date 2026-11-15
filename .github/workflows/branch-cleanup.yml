@@ -1,5 +1,7 @@
 name: Branch cleanup
 
+# 供应链：action 固定到完整 commit SHA（行尾注释版本），升级由 Dependabot 提 PR。
+
 # Deletes only branches whose merged PR is older than the retention window and
 # whose every dependency signal is clean. Manual runs default to a dry run.
 on:
@@ -25,12 +27,12 @@ jobs:
   prune:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 1
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
 

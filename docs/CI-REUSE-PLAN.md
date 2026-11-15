@@ -119,6 +119,8 @@ feishu-aide 做三件事：
 
 ### 4.1 PR CI（业务测试离线，双 OS）
 
+片段里保留 `uses: ...@vN` 只为可读；仓库实际 workflow 固定到完整 commit SHA（行尾注释版本），`sha_pinning_required` 已打开，升级由 Dependabot 提 PR。
+
 ```yaml
 name: CI
 on:

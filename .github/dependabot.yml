@@ -1,0 +1,32 @@
+version: 2
+
+# 供应链：workflow 里的 action 固定到完整 commit SHA，由 Dependabot 每周
+# 提 PR 更新 pin；npm 依赖（仅 devDependencies）每月一次，合并前照常过 CI。
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore
+      include: scope
