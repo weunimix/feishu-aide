@@ -1,8 +1,8 @@
 # 仓库设置基线（Repo settings as code）
 
-Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；数值变化没有 diff，靠本文件的核对记录与 `repo-audit.yml` 兜底（基线 `docs/repo-settings.baseline.json`）。**
+Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；数值变化没有 diff，靠本文件的核对记录与 `pnpm repo:audit` 手动比对兜底（基线 `docs/repo-settings.baseline.json`）。**
 
-为什么要有这份文件：分支保护、合并方式、secret scanning 这些开关不随 `git clone` 走，在 UI 上改一次没有任何 diff，门禁被拆了也没人知道。P1 已加每周 `repo-audit.yml` 用 API 断言这些值（见 §8）；在配置 `REPO_AUDIT_TOKEN` 之前仍要靠这份清单人工核对。
+为什么要有这份文件：分支保护、合并方式、secret scanning 这些开关不随 `git clone` 走，在 UI 上改一次没有任何 diff，门禁被拆了也没人知道。P1 已加 `pnpm repo:audit` 用 API 断言这些值（见 §8），但它是**手动命令、不设定时任务**：改完仓库设置后必须跑一次。
 
 改设置 → 更新本文件；改本文档 → 同步 [CONTRIBUTING.md](../CONTRIBUTING.md) 与 [AGENTS.md](../AGENTS.md)。
 
@@ -173,10 +173,11 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 已落地（2026-11-15）：
 
 - `scripts/check-repo-settings.mjs` 读取 §1–§5 对应的 API（repo、actions/permissions、selected-actions、workflow 权限、rulesets、secret scanning、Dependabot、private vulnerability reporting），归一化后与 `docs/repo-settings.baseline.json` 比对；
-- 不一致时退出码 1，逐字段打印期望值与实际值；`--write`（`pnpm repo:audit:write`）重建基线。**改设置时必须同一次提交更新基线**，否则下一周 audit 会红；
-- `.github/workflows/repo-audit.yml` 每周一 09:00（Asia/Shanghai）跑一次，也支持 `workflow_dispatch`；
-- **已知缺口**：`GITHUB_TOKEN` 没有 Administration 权限，读不到 ruleset / allowlist。需要只读 fine-grained PAT（Administration read + Metadata read）存为 `REPO_AUDIT_TOKEN`。未配置时 job 只发 warning 并跳过——这不是通过，是没检查。
-- 本命令只读，不写任何仓库设置；本地可用 `GH_TOKEN`（有 admin 权限的 token）跑 `pnpm repo:audit` 做同款核对。
+- 不一致时退出码 1，逐字段打印期望值与实际值；`--write`（`pnpm repo:audit:write`）重建基线。**改设置时必须同一次提交更新基线**；
+- **手动执行，不设定时任务**（2026-11-15 撤掉原 `repo-audit.yml`）：改完 §1–§5 任一设置后跑一次 `pnpm repo:audit`；有意变更就在同一次提交里跑 `pnpm repo:audit:write` 更新基线，意外漂移就回滚设置；
+- 为什么不自动化：`GITHUB_TOKEN` 没有 Administration 权限，读不到 ruleset / allowlist；定时 job 要额外配只读 fine-grained PAT（Administration read + Metadata read）并定期轮换。单人仓库里这份运行成本高于收益——audit 真正防的是自己遗忘，在改动发生的那一刻跑最有效；
+- 重新启用定时任务的条件：出现第二个 maintainer、开始接真实飞书凭证（`feishu-live` environment）、或连续两次忘记在改设置后更新基线；
+- 本命令只读，不写任何仓库设置；本地用 `GH_TOKEN`（有 admin 权限的 token）跑 `pnpm repo:audit`。
 
 ## 9. 核对记录
 <!-- src: none -->
@@ -186,4 +187,4 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 | 2026-11-14 | 起草 | **未核对**（本地工作副本读不到仓库设置） |
 | 2026-11-14 | weunimix / agent（gh api） | **已核对并应用 §1–§5**：ruleset 27264463（main）/ 27264465（tag）、merge 设置、Actions allowlist、secret scanning、标签、milestone 均回读确认。偏差 3 处：`secret_scanning_validity_checks` 无法开启；Actions 必须显式放行 `pnpm/action-setup@*`；tag 规则尚无 tag 可测。 |
 | 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `PR title` 必需 check，回读确认 contexts 为 `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title`；`sha_pinning_required` 已于同日开启。 |
-| 2026-11-15 | weunimix / agent（gh api） | 新增 `repo-audit.yml` 与 `scripts/check-repo-settings.mjs`；用线上值生成 `docs/repo-settings.baseline.json` 并通过一次本地比对（与基线一致）。`REPO_AUDIT_TOKEN` 尚未配置，定时任务目前只发 warning 跳过；本地 `pnpm repo:audit` 已验证可用。 |
+| 2026-11-15 | weunimix / agent（gh api） | 新增 `scripts/check-repo-settings.mjs` 与 `docs/repo-settings.baseline.json`，本地 `pnpm repo:audit` 比对与基线一致。同日撤掉 `repo-audit.yml` 定时任务与 PAT 要求：单人仓库改为改设置后手动跑，理由见 §8。 |
