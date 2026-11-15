@@ -48,6 +48,11 @@ jobs:
       - name: Branch cleanup and secret-scan policy tests
         run: pnpm test:policy
 
+      # 文档块映射：零依赖，只断言可验证的事实（src 引用存在、src/ 覆盖率、
+      # 生成的 doc-map.json 与提交版一致），不判断文档内容是否「写对了」。
+      - name: Doc block map
+        run: node scripts/check-docs.mjs
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test:unit

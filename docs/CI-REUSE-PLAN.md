@@ -1,10 +1,11 @@
 # CI 与仓库工程设计复用方案
 
-Status: proposal v2.1 (2026-11-14) — P1 已落地；P2 起按本文顺序推进。
+Status: proposal v2.2 (2026-11-15) — P1 已落地，P1.5 文档块映射已落地；P2 起按本文顺序推进。
 
 v1 假设 feishu-aide 是带客户端 bundle 的 DSH 插件。实际定位是**给 mmw-tools / DSH agent 用的飞书内容获取与本地检索工具**：联网读取飞书文档和 wiki 知识库，增量拉到本地，建立索引，供 agent 检索和读取。这个定位改变了 CI 的风险排序：最高风险不再是“提交的 bundle 过期”，而是“PR CI 依赖真实飞书”“同步/分页/限流逻辑错”“本地缓存路径与检索质量”。
 
 ## 1. 定位与三个直接后果
+<!-- src: none -->
 
 feishu-aide 做三件事：
 
@@ -23,9 +24,10 @@ feishu-aide 做三件事：
 1. 分支清理三件套、`.gitattributes`、CI 骨架仍可原样搬。
 2. 最值钱的三条换成：**离线 fake Feishu 集成测试、同步幂等/分页/限流测试、检索 golden 集**。
 3. `committed-bundle drift` / `pack` / `namespace` 只在选定分发形态后启用，不要先假设。
-4. docs SSOT 和 contracts 仍后置，但 Feishu API 映射、同步语义、认证模型三类文档值得早写。
+4. docs SSOT 的块级源码映射已提前落地（P1.5）；`doc-impact` 的语义检查与 contracts 仍后置，但 Feishu API 映射、同步语义、认证模型三类文档值得早写。
 
 ## 2. 已定决策（2026-11-14）
+<!-- src: none -->
 
 | 决策 | 结论 | 对 CI 的影响 |
 |---|---|---|
@@ -39,6 +41,7 @@ feishu-aide 做三件事：
 存储补充：本机 Node 24.11 的 `node:sqlite` 已验证支持 FTS5 和 `tokenize='trigram'`，中文 substring 检索可用；CI 需要固定 Node 24，并覆盖一次 FTS5 建表，避免 runner 的 SQLite 构建差异到运行时才暴露。
 
 ## 3. 逐条作用与价值
+<!-- src: none -->
 
 这一节回答“每条到底防什么、复用后买到什么”。价值按“不装会怎样 / 装了会怎样”写。
 
@@ -97,7 +100,7 @@ feishu-aide 做三件事：
 
 | 条目 | 作用（机制） | 复用后的价值 |
 |---|---|---|
-| docs SSOT | `doc-map.json` 登记每篇文档；`doc-impact` 把源码改动映射到文档；`check-docs` 拒绝已知漂移标识符。 | 对 agent 协作，文档是输入不是装饰：文档说错，agent 就按错的规则改代码。这个项目尤其需要 `docs/feishu-api.md`（端点/scope/限流）、`docs/sync.md`（增量/删除/权限语义）、`docs/auth.md`（token 模型）。 |
+| docs SSOT | `doc-map.json` 登记每篇文档；`doc-impact` 把源码改动映射到文档；`check-docs` 拒绝已知漂移标识符。**P1.5 已落地块级映射**：每个 `##` 块用 `<!-- src: ... -->` 声明来源，`check-docs` 校验引用存在、`src/` 覆盖率与生成物一致，`doc-impact` 反查受影响的块；基于 base 的语义 diff 仍留 P4。 | 对 agent 协作，文档是输入不是装饰：文档说错，agent 就按错的规则改代码。这个项目尤其需要 `docs/feishu-api.md`（端点/scope/限流）、`docs/sync.md`（增量/删除/权限语义）、`docs/auth.md`（token 模型）。 |
 | contracts | `tools.json` 单一源，生成工具参考，并校验 MCP `tools/list` 与契约一致。 | 不装：工具 schema、文档、测试各写一份，改一处漏三处。装了：agent 看到的工具定义就是服务端真实广告的。 |
 | 策略脚本自测 | 分支清理、文档映射、secret scan 的纯决策函数有单测。 | CI 自己也是代码。不测：改一行清理策略就可能误删分支，没人敢动。 |
 | CI 注释解释 why | 每个 step 写明防的失败模式，而不是复述命令。 | 不装：后人/agent 把关键检查当冗余删掉，CI 慢慢腐化。 |
@@ -112,6 +115,7 @@ feishu-aide 做三件事：
 - **全量 Windows 矩阵**：Windows 是主开发环境，至少保留一个 Windows job；不必每个 Node 版本都跑。
 
 ## 4. 推荐的 CI 分层
+<!-- src: none -->
 
 ### 4.1 PR CI（业务测试离线，双 OS）
 
@@ -157,6 +161,9 @@ jobs:
 
       - name: Branch cleanup and secret-scan policy tests（无依赖）
         run: pnpm test:policy
+
+      - name: Doc block map（无依赖）
+        run: node scripts/check-docs.mjs
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
@@ -232,6 +239,7 @@ jobs:
 - `pnpm test:live` 需要真实凭证，默认跳过；不要在本地把测试租户的文档写进仓库。
 
 ## 5. 测试矩阵
+<!-- src: none -->
 
 | 层 | 网络 | 覆盖 | 频率 |
 |---|---|---|---|
@@ -243,6 +251,7 @@ jobs:
 | live | 真实飞书 | API/permission canary | 每周/手动 |
 
 ## 6. 落地顺序
+<!-- src: none -->
 
 ### P1 落地清单（2026-11-14，done）
 
@@ -254,11 +263,13 @@ jobs:
 
 - **P0（done）**：仓库骨架 + 本方案。
 - **P1（done）**：CI 骨架 + secret scan + unit tests + 分支清理；PR 业务测试离线，不依赖业务代码形态。
+- **P1.5（done，2026-11-15）**：文档块级 `src` 映射 + `scripts/check-docs.mjs` + `scripts/doc-impact.mjs` + 生成的 `docs/doc-map.json`；只做结构事实，语义漂移检查仍在 P4。
 - **P2**：fake Feishu server + contract/integration；分页、429、403、增量幂等、路径安全。
 - **P3**：本地索引 + 迁移 + 检索 golden；MCP/CLI smoke；按分发形态加 dist/pack 检查。
 - **P4**：docs SSOT + 工具契约 + 定时 live canary。
 
 ## 7. 验收清单
+<!-- src: none -->
 
 - [ ] PR 业务测试不访问飞书外网（`pnpm install` 除外）；没有 secrets 也能跑完整同步链路。
 - [ ] 同一 wiki 同步两次 → 无重复、无丢失；更新/删除/移动各一条测试。
@@ -273,6 +284,7 @@ jobs:
 - [ ] 若 git/npm 分发：dist 与源码同步，pack 含入口。
 
 ## 8. 决策记录
+<!-- src: none -->
 
 2026-11-14 已定：core library + stdio MCP server（CLI 后加）；`tenant_access_token` v1；本地文件 + SQLite FTS5 trigram，不做 embedding；wiki + docx，sheets/bitable 后置。
 

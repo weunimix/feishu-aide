@@ -1,0 +1,130 @@
+{
+  "generatedBy": "scripts/check-docs.mjs",
+  "docs": {
+    "docs/CI-REUSE-PLAN.md": [
+      {
+        "anchor": "1-定位与三个直接后果",
+        "heading": "1. 定位与三个直接后果",
+        "src": []
+      },
+      {
+        "anchor": "2-已定决策20261114",
+        "heading": "2. 已定决策（2026-11-14）",
+        "src": []
+      },
+      {
+        "anchor": "3-逐条作用与价值",
+        "heading": "3. 逐条作用与价值",
+        "src": []
+      },
+      {
+        "anchor": "4-推荐的-ci-分层",
+        "heading": "4. 推荐的 CI 分层",
+        "src": []
+      },
+      {
+        "anchor": "5-测试矩阵",
+        "heading": "5. 测试矩阵",
+        "src": []
+      },
+      {
+        "anchor": "6-落地顺序",
+        "heading": "6. 落地顺序",
+        "src": []
+      },
+      {
+        "anchor": "7-验收清单",
+        "heading": "7. 验收清单",
+        "src": []
+      },
+      {
+        "anchor": "8-决策记录",
+        "heading": "8. 决策记录",
+        "src": []
+      }
+    ],
+    "docs/repo-settings.md": [
+      {
+        "anchor": "1-合并与分支general",
+        "heading": "1. 合并与分支（General）",
+        "src": []
+      },
+      {
+        "anchor": "2-main-的分支规则ruleset",
+        "heading": "2. `main` 的分支规则（Ruleset）",
+        "src": []
+      },
+      {
+        "anchor": "3-tags",
+        "heading": "3. Tags",
+        "src": []
+      },
+      {
+        "anchor": "4-github-actions",
+        "heading": "4. GitHub Actions",
+        "src": []
+      },
+      {
+        "anchor": "5-安全",
+        "heading": "5. 安全",
+        "src": []
+      },
+      {
+        "anchor": "6-标签",
+        "heading": "6. 标签",
+        "src": []
+      },
+      {
+        "anchor": "7-里程碑",
+        "heading": "7. 里程碑",
+        "src": []
+      },
+      {
+        "anchor": "8-自动化p1",
+        "heading": "8. 自动化（P1）",
+        "src": []
+      },
+      {
+        "anchor": "9-核对记录",
+        "heading": "9. 核对记录",
+        "src": []
+      }
+    ],
+    "README.md": [
+      {
+        "anchor": "目标能力尚未实现",
+        "heading": "目标能力（尚未实现）",
+        "src": []
+      },
+      {
+        "anchor": "当前已落地",
+        "heading": "当前已落地",
+        "src": [
+          ".github/workflows/branch-cleanup.yml",
+          ".github/workflows/ci.yml",
+          "scripts/check-docs.mjs",
+          "scripts/check-secrets.mjs",
+          "scripts/doc-impact.mjs",
+          "scripts/prune-merged-branches.mjs",
+          "src/core/path-safety.ts",
+          "src/index.ts"
+        ]
+      },
+      {
+        "anchor": "本地验证",
+        "heading": "本地验证",
+        "src": []
+      },
+      {
+        "anchor": "文档",
+        "heading": "文档",
+        "src": []
+      },
+      {
+        "anchor": "许可",
+        "heading": "许可",
+        "src": []
+      }
+    ]
+  }
+}

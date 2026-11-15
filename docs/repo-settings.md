@@ -7,6 +7,7 @@ Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）
 改设置 → 更新本文件；改本文档 → 同步 [CONTRIBUTING.md](../CONTRIBUTING.md) 与 [AGENTS.md](../AGENTS.md)。
 
 ## 1. 合并与分支（General）
+<!-- src: none -->
 
 | 设置 | 期望值 | 为什么 |
 |---|---|---|
@@ -37,6 +38,7 @@ gh api -X PATCH repos/mmw-devs/feishu-aide \
 已于 2026-11-14 应用，当前值与上表一致（`has_wiki` / `has_projects` / `has_discussions` 同时关闭）。注意：PR #1 是在本规则生效前用手动 merge commit 合的，`main` 历史里因此有一个 merge commit；此后只允许 squash。
 
 ## 2. `main` 的分支规则（Ruleset）
+<!-- src: none -->
 
 用 ruleset 而不是旧版 branch protection：支持导出、支持 tag、语义更清楚。
 
@@ -67,6 +69,7 @@ gh api repos/mmw-devs/feishu-aide/rulesets/<id>
 P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比对基线。
 
 ## 3. Tags
+<!-- src: none -->
 
 | 规则 | 期望值 | 说明 |
 |---|---|---|
@@ -76,6 +79,7 @@ P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比�
 现状（2026-11-14）：规则集 `tag-protection`（id `27264465`），匹配 `refs/tags/v*`，禁止删除与更新。**仓库尚无 tag，规则未实测**；第一个 `v*` tag 出现时再验证一次。
 
 ## 4. GitHub Actions
+<!-- src: none -->
 
 | 设置 | 期望值 | 为什么 |
 |---|---|---|
@@ -98,6 +102,7 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 **实测坑**：只勾 GitHub-owned + verified 时，`pnpm/action-setup@v6` 不在 verified 名单，workflow 直接 `startup_failure`（0 job，run 43602247721），不是普通的 step 失败。必须显式加 `pnpm/action-setup@*` pattern；改 allowlist 后务必用 `gh workflow run ci.yml` 实测一次，别只看设置页。
 
 ## 5. 安全
+<!-- src: none -->
 
 | 设置 | 期望值 | 说明 |
 |---|---|---|
@@ -111,6 +116,7 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 现状（2026-11-14）：secret scanning、push protection、Dependabot alerts、Dependabot security updates、private vulnerability reporting 均已开启并回读确认。**偏差**：`secret_scanning_validity_checks` 仍为 `disabled`（PATCH 返回 200 但值不变，疑似组织/计划限制），留在待办；`secret_scanning_non_provider_patterns` 未开。
 
 ## 6. 标签
+<!-- src: none -->
 
 | 标签 | 用途 | 建议颜色 |
 |---|---|---|
@@ -146,6 +152,7 @@ done
 现状（2026-11-14）：18 个标签已创建/更新（`bug` `enhancement` `docs` `ci`、5 个 `area:*`、5 个 `size/*`、`stale` `needs-info` `blocked` `good-first-issue`）；GitHub 自带的 `documentation` `duplicate` `invalid` `question` `wontfix` `help wanted` `good first issue` 保留未删。
 
 ## 7. 里程碑
+<!-- src: none -->
 
 P1 已完成；P2/P3/P4 建 milestone，PR 用 `Closes #` 或 milestone 挂靠，进度才可查询。
 
@@ -158,6 +165,7 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 现状（2026-11-14）：上述三个 milestone 已创建；P1 没有对应 milestone（已完成，不需要追溯）。
 
 ## 8. 自动化（P1）
+<!-- src: none -->
 
 新增 weekly `repo-audit.yml`：
 
@@ -166,6 +174,7 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 - 期望值只存一份，避免文档与脚本各写一份。
 
 ## 9. 核对记录
+<!-- src: none -->
 
 | 日期 | 核对人 | 结果 |
 |---|---|---|

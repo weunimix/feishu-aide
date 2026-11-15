@@ -74,7 +74,8 @@
 
 ```sh
 pnpm install
-pnpm check   # secret scan + typecheck + unit + policy
+pnpm check          # secret scan + docs:check + typecheck + unit + policy
+pnpm docs:impact src/core/path-safety.ts   # 改源码前查受影响的文档块
 pnpm build
 ```
 
@@ -86,6 +87,26 @@ pnpm build
 
 分支保护、合并方式、secret scanning 等**不在 git 里**，清单与核对命令见 [docs/repo-settings.md](docs/repo-settings.md)。改动流程时如果涉及设置，请同步更新那份清单。
 
-## 8. 许可
+## 8. 文档块与源码映射
+
+`README.md` 和 `docs/**/*.md` 的每个二级标题（`##`）是一个文档块，必须在块内声明它描述的源码，否则 `pnpm docs:check` 会失败：
+
+```md
+## 增量同步与游标 {#sync-incremental}
+
+<!-- src: src/sync/incremental.ts, src/sync/cursor.ts -->
+
+正文……
+```
+
+- 不描述代码的块写 `<!-- src: none -->`，不要省略——省略会让“漏映射”和“无需映射”无法区分。
+- 一个块可以列多个文件；路径以仓库根为基准、用 `/`，必须存在且是文件，不能逃出仓库。
+- `src/` 下每个 `.ts` 至少被一个块引用；确实不需要文档的写进 `docs/doc-coverage-ignore.json` 并给出理由。豁免项已被引用、文件不存在或理由为空都会报错。
+- 新增/移动/删除源码文件或改标题后，运行 `pnpm docs:map` 重新生成 `docs/doc-map.json` 并一起提交；CI 会比对生成物与文档是否一致。
+- 改代码前用 `pnpm docs:impact <文件或目录>` 查出受影响的块，只更新这些块。
+- 锚点默认由标题生成；标题重复时用 `{#anchor}` 显式指定。
+- 这套检查只断言可验证的结构事实，不判断文档内容是否“写对了”；语义漂移检测仍在 P4 计划里，不要把它当成已经解决的问题。
+
+## 9. 许可
 
 贡献即同意以 MIT 许可发布，见 [LICENSE](LICENSE)。

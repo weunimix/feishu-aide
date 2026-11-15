@@ -23,9 +23,12 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "pnpm typecheck && pnpm test:unit && pnpm test:policy",
     "test:unit": "tsx --test \"test/**/*.test.ts\"",
-    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs",
+    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs scripts/check-docs.test.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "check": "pnpm check:secrets && pnpm test"
+    "docs:check": "node scripts/check-docs.mjs",
+    "docs:map": "node scripts/check-docs.mjs --write",
+    "docs:impact": "node scripts/doc-impact.mjs",
+    "check": "pnpm check:secrets && pnpm docs:check && pnpm test"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

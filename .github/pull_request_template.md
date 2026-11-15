@@ -1,6 +1,6 @@
 <!--
-标题格式：<type>(<scope>): <英文祈使句摘要>
-例如：feat(sync): add cursor resume for wiki traversal
+标题格式：`<type>(<scope>): <中文祈使句摘要>`
+例如：`feat(sync): 新增 wiki 遍历的游标续传`
 合并方式只有 squash，PR 标题会直接成为 commit 标题。
 -->
 
@@ -33,3 +33,4 @@
 ## 文档
 
 - [ ] README 状态行、计划文档与实际一致（或本 PR 不涉及）
+- [ ] 受影响的文档块已更新（`pnpm docs:impact <path>`），`docs/doc-map.json` 已用 `pnpm docs:map` 重新生成并提交（或本 PR 不涉及源码）
