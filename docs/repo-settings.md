@@ -49,7 +49,7 @@ gh api -X PATCH repos/mmw-devs/feishu-aide \
 | Dismiss stale approvals | **on** | 新 push 后旧 approve 不应继续有效 |
 | Require review from Code Owners | 暂 off（等 CODEOWNERS 落地） | 避免空转 |
 | Require status checks to pass | **on** | 门禁的核心 |
-| 必需 check | `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title` | 与 job 名逐字匹配；`PR title` 由 [pr-title.yml](../.github/workflows/pr-title.yml) 在 opened/edited/reopened/synchronize 时重跑 |
+| 必需 check | `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title`、`Branch name` | 与 job 名逐字匹配；`PR title` 由 [pr-title.yml](../.github/workflows/pr-title.yml) 在 opened/edited/reopened/synchronize 时重跑；`Branch name` 由 [branch-name.yml](../.github/workflows/branch-name.yml) 校验 head 分支命名 |
 | Require branches to be up to date | **on** | 防“绿的是旧 base” |
 | Require conversation resolution | **on** | 有未解决意见不允许合 |
 | Require linear history | **on** | 与 squash-only 一致 |
@@ -68,7 +68,7 @@ gh api repos/mmw-devs/feishu-aide/rulesets/<id>
 
 漂移基线：`docs/repo-settings.baseline.json`，由 `pnpm repo:audit:write` 从线上生成（含两个 ruleset 的归一化结果），不再单独存 `rulesets/main.json`。
 
-2026-11-15 起增加 `PR title` 必需 check：改标题会触发 `edited` 重跑，不会出现“改完还红着”的卡死。
+2026-11-15 起增加 `PR title` 必需 check：改标题会触发 `edited` 重跑，不会出现“改完还红着”的卡死。同日增加 `Branch name` 必需 check（机器人分支、fork PR 放行）；`PR size` 只打 size 标签，不是必需 check。
 
 ## 3. Tags
 <!-- src: none -->
@@ -188,3 +188,4 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 | 2026-11-14 | weunimix / agent（gh api） | **已核对并应用 §1–§5**：ruleset 27264463（main）/ 27264465（tag）、merge 设置、Actions allowlist、secret scanning、标签、milestone 均回读确认。偏差 3 处：`secret_scanning_validity_checks` 无法开启；Actions 必须显式放行 `pnpm/action-setup@*`；tag 规则尚无 tag 可测。 |
 | 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `PR title` 必需 check，回读确认 contexts 为 `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title`；`sha_pinning_required` 已于同日开启。 |
 | 2026-11-15 | weunimix / agent（gh api） | 新增 `scripts/check-repo-settings.mjs` 与 `docs/repo-settings.baseline.json`，本地 `pnpm repo:audit` 比对与基线一致。同日撤掉 `repo-audit.yml` 定时任务与 PAT 要求：单人仓库改为改设置后手动跑，理由见 §8。 |
+| 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `Branch name` 必需 check（机器人分支与 fork 放行）；新增 `pr-size.yml` 只打 `size/*` 标签，不设必需 check。回读确认 contexts 为四项。 |

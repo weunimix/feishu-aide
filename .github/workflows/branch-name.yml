@@ -1,0 +1,33 @@
+name: Branch name
+
+# 分支名是 PR 里最早可见的意图声明；这里只校验命名，不校验代码。
+# 机器人分支与 fork 分支放行：机器人命名不可控，fork 分支不由本仓库约束。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: branch-name-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    name: Branch name
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: 校验分支名
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: node scripts/check-branch-name.mjs

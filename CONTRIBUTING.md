@@ -52,6 +52,8 @@
 |---|---|
 | `verify (ubuntu-latest)` | [.github/workflows/ci.yml](.github/workflows/ci.yml) |
 | `verify (windows-latest)` | 同上 |
+| `PR title` | [.github/workflows/pr-title.yml](.github/workflows/pr-title.yml) |
+| `Branch name` | [.github/workflows/branch-name.yml](.github/workflows/branch-name.yml) |
 
 分支保护按 **job 名逐字匹配**，改名等于改门禁：必须在同一 PR 里更新仓库规则（见 [docs/repo-settings.md](docs/repo-settings.md)）。
 
