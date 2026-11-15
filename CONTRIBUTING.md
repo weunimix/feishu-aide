@@ -35,7 +35,7 @@
 - `type` 同分支类型；`scope` 可选：`core` `sync` `search` `mcp` `cli` `ci` `docs`。
 - 标题用中文祈使句，≤72 字符，不加句号；`type` 与 `scope` 保持英文。
 - 正文也用中文，解释动机、取舍与被否决的方案；破坏性变更写 `BREAKING CHANGE:`（这个标记本身是约定的关键字，保留英文）。
-- squash merge 后 PR 标题就是提交信息，所以 **PR 标题必须符合本节格式**。PR 标题由 [.github/workflows/pr-title.yml](.github/workflows/pr-title.yml) 自动校验（本地可跑 `pnpm title:check "ci: 示例"`）：格式不符会阻止合并；它只校验格式、不校验语言，Dependabot 的英文标题也能通过。
+- squash merge 后 PR 标题就是提交信息，所以 **PR 标题必须符合本节格式**。PR 标题由 [.github/workflows/pr-title.yml](.github/workflows/pr-title.yml) 自动校验（本地可跑 `pnpm title:check "ci: 示例"`）：格式不符会阻止合并；它只校验格式、不校验语言，Dependabot 的英文标题也能通过。Dependabot 的 PR 跳过长度检查——分组标题由 bot 生成、长度不可控（例如 82 字符的 `chore(deps-dev): bump ...group across 1 directory with 2 updates`），格式仍会校验。
 - 已经推送的英文提交不追溯改写；从本规范生效后新增的内容一律用中文。
 
 ## 4. PR 流程

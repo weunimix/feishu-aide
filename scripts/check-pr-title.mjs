@@ -13,15 +13,18 @@ const TITLE_PATTERN = new RegExp(`^(${TYPES.join("|")})(${SCOPE})?: (\\S.*)$`);
 /**
  * 返回错误列表；空数组表示通过。
  * @param {string} raw
+ * @param {{ skipLengthCheck?: boolean }} [options]
  * @returns {string[]}
  */
-export function validateTitle(raw) {
+export function validateTitle(raw, options = {}) {
   const title = String(raw ?? "").trim();
   if (title.length === 0) return ["标题为空"];
 
   const errors = [];
   const length = [...title].length;
-  if (length > MAX_LENGTH) errors.push(`标题 ${length} 字符，超过 ${MAX_LENGTH} 上限`);
+  if (length > MAX_LENGTH && !options.skipLengthCheck) {
+    errors.push(`标题 ${length} 字符，超过 ${MAX_LENGTH} 上限`);
+  }
 
   const match = TITLE_PATTERN.exec(title);
   if (!match) {
@@ -45,7 +48,9 @@ function main() {
     return;
   }
 
-  const errors = validateTitle(title);
+  const errors = validateTitle(title, {
+    skipLengthCheck: (process.env.PR_AUTHOR ?? "") === "dependabot[bot]",
+  });
   if (errors.length > 0) {
     console.error("PR 标题不符合约定：");
     for (const error of errors) console.error(`- ${error}`);

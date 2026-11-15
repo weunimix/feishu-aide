@@ -46,3 +46,11 @@ test("长度上限按字符数计算", () => {
   assert.equal(errors.length, 1);
   assert.match(errors[0], /超过 72 上限/);
 });
+
+test("Dependabot 分组标题超长时只跳过长度检查", () => {
+  const grouped =
+    "chore(deps-dev): bump the dev-dependencies group across 1 directory with 2 updates";
+  assert.equal([...grouped].length, 82);
+  assert.deepEqual(validateTitle(grouped, { skipLengthCheck: true }), []);
+  assert.equal(validateTitle(grouped).length, 1);
+});
