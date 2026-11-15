@@ -1,0 +1,31 @@
+name: PR title
+
+# squash-only 下 PR 标题会成为 main 的提交信息，所以在合并前校验格式。
+# 只校验格式，不校验语言：Dependabot 生成的英文标题也必须能通过。
+# edited 事件必须单列，否则改了标题后检查不会重跑，PR 会一直红着。
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: 校验 PR 标题
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-pr-title.mjs

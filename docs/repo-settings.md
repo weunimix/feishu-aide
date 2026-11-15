@@ -49,7 +49,7 @@ gh api -X PATCH repos/mmw-devs/feishu-aide \
 | Dismiss stale approvals | **on** | 新 push 后旧 approve 不应继续有效 |
 | Require review from Code Owners | 暂 off（等 CODEOWNERS 落地） | 避免空转 |
 | Require status checks to pass | **on** | 门禁的核心 |
-| 必需 check | `verify (ubuntu-latest)`、`verify (windows-latest)` | 与 job 名逐字匹配 |
+| 必需 check | `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title` | 与 job 名逐字匹配；`PR title` 由 [pr-title.yml](../.github/workflows/pr-title.yml) 在 opened/edited/reopened/synchronize 时重跑 |
 | Require branches to be up to date | **on** | 防“绿的是旧 base” |
 | Require conversation resolution | **on** | 有未解决意见不允许合 |
 | Require linear history | **on** | 与 squash-only 一致 |
@@ -67,6 +67,8 @@ gh api repos/mmw-devs/feishu-aide/rulesets/<id>
 现状（2026-11-14）：规则集 `main-protection`（id `27264463`），`enforcement: active`，`bypass_actors` 为空（管理员也不绕过）；`strict_required_status_checks_policy: true`；`allowed_merge_methods: ["squash"]`。注意 GitHub 默认开启了 `require_extra_approval_for_unattributed_changes`：将来的机器人/未归属提交若被判定为 unattributed，合入需要额外 approve，届时要么调整该参数，要么保证提交带有归属。
 
 P1：把导出的 ruleset JSON 存到 `docs/rulesets/main.json` 作为漂移比对基线。
+
+2026-11-15 起增加 `PR title` 必需 check：改标题会触发 `edited` 重跑，不会出现“改完还红着”的卡死。
 
 ## 3. Tags
 <!-- src: none -->
@@ -181,3 +183,4 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 |---|---|---|
 | 2026-11-14 | 起草 | **未核对**（本地工作副本读不到仓库设置） |
 | 2026-11-14 | weunimix / agent（gh api） | **已核对并应用 §1–§5**：ruleset 27264463（main）/ 27264465（tag）、merge 设置、Actions allowlist、secret scanning、标签、milestone 均回读确认。偏差 3 处：`secret_scanning_validity_checks` 无法开启；Actions 必须显式放行 `pnpm/action-setup@*`；tag 规则尚无 tag 可测。 |
+| 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `PR title` 必需 check，回读确认 contexts 为 `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title`；`sha_pinning_required` 已于同日开启。 |
