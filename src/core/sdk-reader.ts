@@ -4,6 +4,7 @@ import type { FeishuBlock } from "./markdown.js";
 import type { Domain } from "./device-flow.js";
 import { asRecord, unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { guardSdkCall } from "./sdk-error.js";
 import { silentLogger } from "./sdk-logger.js";
 
 /**
@@ -34,8 +35,10 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     async getDocument(documentId: string): Promise<DocumentMeta> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await withRetry(() =>
-          client.docx.document.get({ path: { document_id: documentId } }, lark.withUserAccessToken(token))
+        await guardSdkCall(() =>
+          withRetry(() =>
+            client.docx.document.get({ path: { document_id: documentId } }, lark.withUserAccessToken(token))
+          )
         )
       );
       const document = asRecord(data.document);
@@ -48,13 +51,15 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     async listBlocks(documentId: string, pageToken?: string): Promise<BlockPage> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await withRetry(() =>
-          client.docx.documentBlock.list(
-            {
-              path: { document_id: documentId },
-              params: { page_size: PAGE_SIZE, ...(pageToken === undefined ? {} : { page_token: pageToken }) },
-            },
-            lark.withUserAccessToken(token)
+        await guardSdkCall(() =>
+          withRetry(() =>
+            client.docx.documentBlock.list(
+              {
+                path: { document_id: documentId },
+                params: { page_size: PAGE_SIZE, ...(pageToken === undefined ? {} : { page_token: pageToken }) },
+              },
+              lark.withUserAccessToken(token)
+            )
           )
         )
       );
@@ -67,8 +72,10 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     async resolveWikiToken(wikiToken: string): Promise<WikiNode> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await withRetry(() =>
-          client.wiki.space.getNode({ params: { token: wikiToken, obj_type: "wiki" } }, lark.withUserAccessToken(token))
+        await guardSdkCall(() =>
+          withRetry(() =>
+            client.wiki.space.getNode({ params: { token: wikiToken, obj_type: "wiki" } }, lark.withUserAccessToken(token))
+          )
         )
       );
       const node = asRecord(data.node);

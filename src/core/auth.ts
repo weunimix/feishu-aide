@@ -52,11 +52,12 @@ export interface AuthManagerOptions {
 }
 
 /**
- * 默认申请的权限：文档与 wiki 的读写、消息只读、按名字搜索联系人（拿单聊会话 id）、离线刷新。
+ * 默认申请的权限：文档与 wiki 的读写、单聊与群聊消息只读、按名字搜索联系人（拿单聊会话 id）、离线刷新。
+ * `im:message:readonly` 覆盖不到按会话读历史（飞书会回 230027 要求下面两个细分权限），所以一并申请。
  * `search:docs:read` 需要企业管理员在应用上审批，默认不申请；调用方可以显式传 scope 覆盖。
  */
 export const DEFAULT_SCOPES =
-  "docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly contact:user:search offline_access";
+  "docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly im:message.p2p_msg:get_as_user im:message.group_msg:get_as_user contact:user:search offline_access";
 
 export class AuthManager {
   private refreshing: Promise<TokenSet> | null = null;

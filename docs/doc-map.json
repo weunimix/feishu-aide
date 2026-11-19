@@ -79,6 +79,8 @@
           "src/core/markdown.ts",
           "src/core/messages.ts",
           "src/core/retry.ts",
+          "src/core/sdk-contacts.ts",
+          "src/core/sdk-error.ts",
           "src/core/sdk-logger.ts",
           "src/core/sdk-messages.ts",
           "src/core/sdk-reader.ts",

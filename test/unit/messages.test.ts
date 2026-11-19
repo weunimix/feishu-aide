@@ -52,6 +52,15 @@ test("文本、富文本、附件按类型取可读内容", () => {
   assert.equal(extractText("todo", "not-json"), "not-json");
 });
 
+test("段落包裹的文本消息剥掉 <p> 与 <br>，普通尖括号保持原样", () => {
+  assert.equal(
+    extractText("text", JSON.stringify({ text: "<p>看这个\nhttps://example.com/x</p>" })),
+    "看这个\nhttps://example.com/x"
+  );
+  assert.equal(extractText("text", JSON.stringify({ text: "a<br>b<br/>c" })), "a<br>b<br/>c");
+  assert.equal(extractText("text", JSON.stringify({ text: "1 < 2 按 <ps> 处理" })), "1 < 2 按 <ps> 处理");
+});
+
 test("已删除消息与缺 id 的条目被跳过", () => {
   const messages = toMessages([
     { message_id: "om_1", msg_type: "text", create_time: "1760000000000", body: { content: '{"text":"一"}' }, sender: { id: "ou_1", sender_name: "张三" } },

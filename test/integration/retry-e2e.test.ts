@@ -92,6 +92,9 @@ test("非限流错误只请求一次，错误信息里也没有令牌", async ()
         (error: unknown) => {
           const message = error instanceof Error ? error.message : String(error);
           assert.ok(!message.includes(TOKEN), `错误信息泄漏了令牌：${message}`);
+          // 业务码与 msg 必须出现在错误里，否则用户只能看到 "status code 404"。
+          assert.ok(message.includes("code=1310202"), `错误信息缺少业务码：${message}`);
+          assert.ok(message.includes("document not found"), `错误信息缺少原因：${message}`);
           return true;
         }
       );

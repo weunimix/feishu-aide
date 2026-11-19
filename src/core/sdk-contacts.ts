@@ -3,6 +3,7 @@ import type { ContactQuery, ContactSearcher, RawContactPage } from "./contacts.j
 import { OFFICIAL_ENDPOINTS, type Domain } from "./device-flow.js";
 import { unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { guardSdkCall } from "./sdk-error.js";
 
 /**
  * 通讯录搜索的 SDK 适配。
@@ -27,14 +28,16 @@ export function createSdkContactSearcher(options: ContactSearcherOptions): Conta
     async searchUsers(query: ContactQuery): Promise<RawContactPage> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await withRetry(() =>
-          lark.defaultHttpInstance.request({
-            url: `${base}${SEARCH_PATH}`,
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            params: { page_size: query.limit },
-            data: { query: query.query },
-          })
+        await guardSdkCall(() =>
+          withRetry(() =>
+            lark.defaultHttpInstance.request({
+              url: `${base}${SEARCH_PATH}`,
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              params: { page_size: query.limit },
+              data: { query: query.query },
+            })
+          )
         )
       );
       const items = Array.isArray(data.items) ? data.items : [];

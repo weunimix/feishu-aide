@@ -59,7 +59,7 @@ MVP 范围：
 Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown，写工具只接受块级操作。
 
 ## 4. 维护性
-<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-messages.ts, src/core/sdk-writer.ts, src/core/sdk-logger.ts, src/core/feishu-json.ts, src/core/retry.ts, src/core/search.ts, src/core/messages.ts, src/core/markdown.ts, src/plugin.ts -->
+<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-messages.ts, src/core/sdk-writer.ts, src/core/sdk-contacts.ts, src/core/sdk-error.ts, src/core/sdk-logger.ts, src/core/feishu-json.ts, src/core/retry.ts, src/core/search.ts, src/core/messages.ts, src/core/markdown.ts, src/plugin.ts -->
 
 依赖面刻意收窄到平台两个 API：`ctx.tools.register`（工具注册）与壳层传入的配置（`resolveConfig`）。不依赖客户端包，不依赖插件管理器内部结构，不依赖 `ctx.agents` 的内部字段。
 
@@ -72,6 +72,7 @@ SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正�
 | 失效模式 | 后果 | 对策 |
 |---|---|---|
 | 网络超时、限流 | 工具挂起或失败 | 429、503 与业务码 99991400 按 `Retry-After` 退避，缺失时指数退避并封顶 10s，最多 3 次；其余 4xx 不重试 |
+| 业务失败被包装成 4xx | 只看到「status code 400」，不知道缺什么权限 | 适配层把响应体里的 `code` 与 `msg` 还原进错误消息（`sdk-error.ts`），权限、限流类错误都能照着改 |
 | 分页漏页或死循环 | 内容不完整 | 游标单测覆盖空页、重复游标、边界页大小 |
 | 未知块类型 | 渲染失败 | 降级为纯文本，不抛错 |
 | token 过期 | 调用失败 | 刷新用比较并交换，避免并发覆盖；失败时返回可操作的错误 |
@@ -89,7 +90,7 @@ SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正�
 | 工具 | 用途 | 读/写 | 状态 |
 |---|---|---|---|
 | `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope，以及还差哪一步确认 | 读 | 已实现 |
-| `feishu_auth_login` | 推进一步授权：先返回创建应用的确认地址，再返回授权地址与用户码。默认申请文档与 wiki 读写、消息只读、联系人搜索、离线刷新；`search:docs:read` 需显式传入 | 写（本地凭据） | 已实现 |
+| `feishu_auth_login` | 推进一步授权：先返回创建应用的确认地址，再返回授权地址与用户码。默认申请文档与 wiki 读写、消息只读（含按会话读单聊与群聊所需的细分权限）、联系人搜索、离线刷新；`search:docs:read` 需显式传入 | 写（本地凭据） | 已实现 |
 | `feishu_auth_logout` | 撤销授权，清空本地令牌与文档缓存（保留应用凭据） | 写（本地凭据） | 已实现 |
 | `feishu_doc_read` | 读 docx 文档与 wiki 节点，返回块、版本与 Markdown | 读 | 已实现 |
 | `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |

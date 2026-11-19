@@ -2,6 +2,7 @@ import * as lark from "@larksuiteoapi/node-sdk";
 import type { Domain } from "./device-flow.js";
 import { unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { guardSdkCall } from "./sdk-error.js";
 import { silentLogger } from "./sdk-logger.js";
 import { toHits } from "./search.js";
 import type { DocSearcher, SearchQuery, SearchResult } from "./search.js";
@@ -54,19 +55,21 @@ export function createSdkSearcher(options: SearcherOptions): DocSearcher {
       const token = await options.userAccessToken();
       const docTypes = asDocTypes(query.docTypes);
       const data = unwrap(
-        await withRetry(() =>
-          client.search.v2.docWiki.search(
-            {
-              data: {
-                query: query.query,
-                page_size: query.limit,
-                doc_filter: {
-                  only_title: query.onlyTitle,
-                  ...(docTypes === undefined ? {} : { doc_types: docTypes }),
+        await guardSdkCall(() =>
+          withRetry(() =>
+            client.search.v2.docWiki.search(
+              {
+                data: {
+                  query: query.query,
+                  page_size: query.limit,
+                  doc_filter: {
+                    only_title: query.onlyTitle,
+                    ...(docTypes === undefined ? {} : { doc_types: docTypes }),
+                  },
                 },
               },
-            },
-            lark.withUserAccessToken(token)
+              lark.withUserAccessToken(token)
+            )
           )
         )
       );

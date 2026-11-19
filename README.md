@@ -10,7 +10,7 @@ Status: P2 (2026-11-20) — 首次使用自动创建应用、设备流授权、d
 - 已实现：首次使用时自动创建个人应用并完成设备流授权（`feishu_auth_status` / `feishu_auth_login` / `feishu_auth_logout`），用户只需在飞书页面上确认两次，token 在本地保存并按需刷新；
 - 已实现：读取 docx 文档与 wiki 节点（wiki 链接解析到背后的文档），返回块、版本与 Markdown（`feishu_doc_read`）；
 - 已实现：按关键词搜索文档与知识库，返回标题、链接、类型与摘要（`feishu_doc_search`）；该能力需要管理员审批 `search:docs:read`，缺失时工具会明确提示；
-- 已实现：按会话与时间区间读取群聊、单聊的历史消息，返回发送人、时间与可读文本（`feishu_chat_messages`）；
+- 已实现：按会话与时间区间读取群聊、单聊的历史消息，返回发送人、时间与可读文本（`feishu_chat_messages`）；默认授权里已包含按会话读单聊与群聊所需的细分权限（`im:message.p2p_msg:get_as_user`、`im:message.group_msg:get_as_user`）；
 - 已实现：按名字搜索联系人，返回 open_id、部门与单聊会话 id，拿到会话 id 就能读聊天记录（`feishu_contact_search`）；
 - 已实现：替换文本块、插入文本块、新建文档，写前校验版本，操作带幂等键（`feishu_doc_write`）；
 - 已实现：读文档按 `(文档, 版本, 读取预算)` 缓存块内容，版本变化自动失效，TTL 到期即丢。

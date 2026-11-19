@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuthManager, type AuthManagerOptions } from "../../src/core/auth.js";
+import { AuthManager, DEFAULT_SCOPES, type AuthManagerOptions } from "../../src/core/auth.js";
 import { MemoryAppCredentialStore } from "../../src/core/app-credentials.js";
 import { MemoryTokenStore } from "../../src/core/token-store.js";
 
@@ -244,4 +244,31 @@ test("self-hosted 模式缺凭据时报可操作错误", async () => {
   const { manager } = makeManager({ mode: "self-hosted", configCredentials: { appId: "", appSecret: "" } });
   await assert.rejects(manager.login(), /auth\.mode=self-hosted/);
   await assert.rejects(manager.getAppCredentials(), /auth\.mode=self-hosted/);
+});
+
+test("默认权限包含按会话读单聊与群聊所需的细分权限", () => {
+  // 只申请 im:message:readonly 时，读单聊会回 230027 要求细分权限。
+  assert.match(DEFAULT_SCOPES, /im:message\.p2p_msg:get_as_user/);
+  assert.match(DEFAULT_SCOPES, /im:message\.group_msg:get_as_user/);
+  assert.match(DEFAULT_SCOPES, /offline_access/);
+  // 需要管理员审批的搜索权限不能混进默认集合，否则用户会卡在一个拿不到的权限上。
+  assert.ok(!DEFAULT_SCOPES.includes("search:docs:read"));
+});
+
+test("发起授权时把默认权限一起发给飞书", async () => {
+  const bodies: Record<string, string>[] = [];
+  const fetchImpl = (async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    bodies.push(JSON.parse(String(init?.body ?? "{}")) as Record<string, string>);
+    return jsonResponse({
+      device_code: "dev-1",
+      user_code: "USER-1",
+      verification_uri: "https://auth.test/verify",
+      expires_in: 600,
+      interval: 5,
+    });
+  }) as typeof fetch;
+
+  const { manager } = makeManager({ fetchImpl });
+  await manager.login();
+  assert.equal(bodies[0]?.scope, DEFAULT_SCOPES);
 });

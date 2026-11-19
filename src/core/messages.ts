@@ -124,6 +124,16 @@ function textFromPost(content: Record<string, unknown>): string {
   return title + lines.join("\n").trim();
 }
 
+/**
+ * 有些客户端把段落包成 `<p>…</p>` 再作为文本消息发出（粘贴富文本时常见）。
+ * 只剥这种整段包裹与其中的 `<br>`，不做通用 HTML 清洗，避免误删正文里的尖括号。
+ */
+function unwrapParagraphs(text: string): string {
+  const match = /^<p>([\s\S]*)<\/p>$/.exec(text.trim());
+  if (!match) return text;
+  return (match[1] ?? "").replace(/<br\s*\/?>/gi, "\n");
+}
+
 /** 消息体是 JSON 字符串，按 msg_type 取出人能读的文本。 */
 export function extractText(msgType: string, rawContent: unknown): string {
   let content: Record<string, unknown> = {};
@@ -140,7 +150,7 @@ export function extractText(msgType: string, rawContent: unknown): string {
 
   switch (msgType) {
     case "text":
-      return typeof content.text === "string" ? content.text : "";
+      return typeof content.text === "string" ? unwrapParagraphs(content.text) : "";
     case "post":
       return textFromPost(content);
     case "image":
