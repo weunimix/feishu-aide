@@ -175,8 +175,8 @@
     ],
     "README.md": [
       {
-        "anchor": "能力与进度",
-        "heading": "能力与进度",
+        "anchor": "它能做什么",
+        "heading": "它能做什么",
         "src": []
       },
       {
@@ -185,8 +185,39 @@
         "src": []
       },
       {
-        "anchor": "当前已落地",
-        "heading": "当前已落地",
+        "anchor": "授权",
+        "heading": "授权",
+        "src": []
+      },
+      {
+        "anchor": "使用",
+        "heading": "使用",
+        "src": []
+      },
+      {
+        "anchor": "工具",
+        "heading": "工具",
+        "src": [
+          "src/plugin.ts"
+        ]
+      },
+      {
+        "anchor": "配置",
+        "heading": "配置",
+        "src": [
+          "src/core/config.ts"
+        ]
+      },
+      {
+        "anchor": "权限",
+        "heading": "权限",
+        "src": [
+          "src/core/auth.ts"
+        ]
+      },
+      {
+        "anchor": "开发",
+        "heading": "开发",
         "src": [
           ".github/dependabot.yml",
           ".github/workflows/branch-cleanup.yml",
@@ -194,15 +225,8 @@
           "scripts/check-docs.mjs",
           "scripts/check-secrets.mjs",
           "scripts/doc-impact.mjs",
-          "scripts/prune-merged-branches.mjs",
-          "src/core/path-safety.ts",
-          "src/index.ts"
+          "scripts/prune-merged-branches.mjs"
         ]
-      },
-      {
-        "anchor": "本地验证",
-        "heading": "本地验证",
-        "src": []
       },
       {
         "anchor": "文档",

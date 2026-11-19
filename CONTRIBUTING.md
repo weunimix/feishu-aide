@@ -77,7 +77,7 @@
 ```sh
 pnpm install
 pnpm check          # secret scan + docs:check + typecheck + unit + policy
-pnpm docs:impact src/core/path-safety.ts   # 改源码前查受影响的文档块
+pnpm docs:impact src/core/auth.ts   # 改源码前查受影响的文档块
 pnpm build
 ```
 

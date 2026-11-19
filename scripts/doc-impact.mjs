@@ -3,9 +3,9 @@
  * 查询“改这个文件会影响哪些文档块”。
  *
  * 用法：
- *   node scripts/doc-impact.mjs src/core/path-safety.ts
- *   node scripts/doc-impact.mjs src/sync            # 目录按前缀匹配
- *   node scripts/doc-impact.mjs --json src/sync/a.ts
+ *   node scripts/doc-impact.mjs src/core/auth.ts
+ *   node scripts/doc-impact.mjs src/core            # 目录按前缀匹配
+ *   node scripts/doc-impact.mjs --json src/core/auth.ts
  *
  * 映射直接从文档块里的 `<!-- src: ... -->` 标注现算，不依赖 docs/doc-map.json，
  * 因此在未提交/本地修改的文档上也成立。输出是给 agent 的阅读清单，不是门禁：
