@@ -5,11 +5,17 @@ export const WRITE_OPERATIONS = ["replace_text", "insert_text", "create_document
 export type WriteOperation = (typeof WRITE_OPERATIONS)[number];
 
 /**
- * 插件配置。除了 `auth.appId` / `auth.appSecret`（必须由用户提供自建应用凭据）之外，
+ * 插件配置。`auth.mode=auto` 时首次使用会自动创建应用，用户只做两次确认；
+ * 只有显式选择 `self-hosted` 才必须填写 `auth.appId` / `auth.appSecret`。
  * 其余项都有能直接跑起来的默认值。
  */
 export interface FeishuAideConfig {
-  auth: { domain: "feishu" | "lark"; appId: string; appSecret: string };
+  auth: {
+    mode: "auto" | "self-hosted";
+    domain: "feishu" | "lark";
+    appId: string;
+    appSecret: string;
+  };
   storage: { dir: string };
   read: { maxBlocks: number; maxBytes: number; cacheTtlSeconds: number };
   write: {
@@ -23,16 +29,19 @@ export interface FeishuAideConfig {
 /** 交给 DSH 渲染配置表单用的 schema；默认值与 `FeishuAideConfig` 必须保持一致。 */
 export const Config: Schemastery = Schema.object({
   auth: Schema.object({
+    mode: Schema.union(["auto", "self-hosted"] as const)
+      .default("auto")
+      .description("auto：首次使用自动创建应用；self-hosted：使用自己建的应用"),
     domain: Schema.union(["feishu", "lark"] as const)
       .default("feishu")
       .description("飞书（feishu）还是国际版 Lark（lark）"),
     appId: Schema.string()
       .default("")
-      .description("自建应用的 App ID，例如 cli_xxx"),
+      .description("仅 self-hosted 需要：自建应用的 App ID，例如 cli_xxx"),
     appSecret: Schema.string()
       .role("secret")
       .default("")
-      .description("自建应用的 App Secret"),
+      .description("仅 self-hosted 需要：自建应用的 App Secret"),
   }),
   storage: Schema.object({
     dir: Schema.string()

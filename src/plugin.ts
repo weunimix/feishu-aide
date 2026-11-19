@@ -6,6 +6,7 @@ import { AuthManager } from "./core/auth.js";
 import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
 import { FileDocumentCache } from "./core/cache.js";
 import { OFFICIAL_ENDPOINTS } from "./core/device-flow.js";
+import { FileAppCredentialStore } from "./core/app-credentials.js";
 import { extractDocRef, readDocumentCached } from "./core/docx.js";
 import { listChatMessages } from "./core/messages.js";
 import { createSdkMessageReader } from "./core/sdk-messages.js";
@@ -20,26 +21,25 @@ import { runWrite } from "./core/write.js";
 export const name = "feishu-aide";
 export const inject = ["tools"];
 
+/** 搜索走的是 Search v2 接口，需要独立权限；组织通常要管理员审批。 */
+const SEARCH_SCOPE = "search:docs:read";
+
 function resolveStorageDir(config: FeishuAideConfig): string {
   if (config.storage.dir) return config.storage.dir;
   const home = process.env.DSH_HOME ?? path.join(os.homedir(), ".dsh");
   return path.join(home, "feishu-aide");
 }
 
-function requireAppCredentials(config: FeishuAideConfig): { appId: string; appSecret: string } {
-  const { appId, appSecret } = config.auth;
-  if (!appId || !appSecret) {
-    throw new Error(
-      "未配置飞书自建应用：请在插件配置里填写 auth.appId 与 auth.appSecret（自建应用的 App ID / App Secret）"
-    );
-  }
-  return { appId, appSecret };
+function hasScope(scope: string | undefined, wanted: string): boolean {
+  if (!scope) return false;
+  return scope.split(/\s+/).includes(wanted);
 }
 
 export function apply(ctx: Context, input?: unknown): void {
   const config = resolveConfig(input);
   const storageDir = resolveStorageDir(config);
   const store = new FileTokenStore(storageDir);
+  const appCredentials = new FileAppCredentialStore(storageDir);
   const documentCache = new FileDocumentCache(path.join(storageDir, "cache"));
   // 启动时先扫一遍：过期条目没有事件可依赖，只能靠这种必然发生的时机兜底。
   const cacheTtlMs = Math.max(0, config.read.cacheTtlSeconds) * 1000;
@@ -48,39 +48,39 @@ export function apply(ctx: Context, input?: unknown): void {
   // 懒构造：查授权状态不需要应用凭据，真正联网的工具在调用前各自校验。
   let manager: AuthManager | null = null;
   const auth = (): AuthManager =>
-    (manager ??= new AuthManager(
-      {
-        appId: config.auth.appId,
-        appSecret: config.auth.appSecret,
-        endpoints: OFFICIAL_ENDPOINTS[config.auth.domain],
-      },
-      store
-    ));
+    (manager ??= new AuthManager({
+      domain: config.auth.domain,
+      endpoints: OFFICIAL_ENDPOINTS[config.auth.domain],
+      mode: config.auth.mode,
+      configCredentials: { appId: config.auth.appId, appSecret: config.auth.appSecret },
+      credentials: appCredentials,
+      tokens: store,
+    }));
 
-  const reader = () =>
+  const reader = async () =>
     createSdkReader({
-      ...requireAppCredentials(config),
+      ...(await auth().getAppCredentials()),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
     });
 
-  const writer = () =>
+  const writer = async () =>
     createSdkWriter({
-      ...requireAppCredentials(config),
+      ...(await auth().getAppCredentials()),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
     });
 
-  const searcher = () =>
+  const searcher = async () =>
     createSdkSearcher({
-      ...requireAppCredentials(config),
+      ...(await auth().getAppCredentials()),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
     });
 
-  const messages = () =>
+  const messages = async () =>
     createSdkMessageReader({
-      ...requireAppCredentials(config),
+      ...(await auth().getAppCredentials()),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
     });
@@ -88,7 +88,7 @@ export function apply(ctx: Context, input?: unknown): void {
   ctx.tools.register(
     defineTool({
       name: "feishu_auth_status",
-      description: "查看飞书授权状态：是否已授权、访问令牌过期时间与授权范围。",
+      description: "查看飞书授权状态：是否已授权、访问令牌过期时间、已授予的 scope，以及是否还有待确认的步骤。",
       parameters: {},
       output: {
         schema: {
@@ -98,18 +98,27 @@ export function apply(ctx: Context, input?: unknown): void {
             authorized: { type: "boolean", required: true },
             expiresAt: { type: "number" },
             scope: { type: "string" },
+            pending: { type: "string", description: "register | authorize：还有一步等用户确认" },
             domain: { type: "string", required: true },
           },
         },
-        render: (_args, value) =>
-          value.authorized
-            ? [
-                {
-                  type: "text",
-                  text: `已授权（${value.domain}），令牌将于 ${new Date(value.expiresAt ?? 0).toLocaleString()} 过期`,
-                },
-              ]
-            : [{ type: "text", text: "未授权：调用 feishu_auth_login 发起设备授权" }],
+        render: (_args, value) => {
+          if (value.authorized) {
+            return [
+              {
+                type: "text",
+                text: `已授权（${value.domain}），令牌将于 ${new Date(value.expiresAt ?? 0).toLocaleString()} 过期`,
+              },
+            ];
+          }
+          if (value.pending === "register") {
+            return [{ type: "text", text: "应用还在创建中：用户确认后再次调用 feishu_auth_login 继续" }];
+          }
+          if (value.pending === "authorize") {
+            return [{ type: "text", text: "应用已创建，等待用户授权：再次调用 feishu_auth_login 继续" }];
+          }
+          return [{ type: "text", text: "未授权：调用 feishu_auth_login 开始" }];
+        },
       },
       async execute() {
         const status = await auth().status();
@@ -121,7 +130,8 @@ export function apply(ctx: Context, input?: unknown): void {
   ctx.tools.register(
     defineTool({
       name: "feishu_auth_login",
-      description: "发起飞书设备授权：返回用户码与验证地址，用户在浏览器完成授权后插件在后台保存令牌。",
+      description:
+        "推进飞书接入：第一次调用创建应用（用户确认一次），之后调用发起用户授权或查询是否完成。按返回的地址操作后再次调用本工具即可。",
       parameters: {
         scope: { type: "string", description: "可选，空格分隔的权限范围，例如 docx:document wiki:wiki" },
       },
@@ -130,38 +140,38 @@ export function apply(ctx: Context, input?: unknown): void {
           type: "object",
           additionalProperties: false,
           properties: {
-            status: { type: "string", required: true },
-            userCode: { type: "string", required: true },
-            verificationUri: { type: "string", required: true },
-            expiresIn: { type: "number", required: true },
+            stage: { type: "string", required: true, description: "register | authorize | authorized" },
+            userCode: { type: "string" },
+            verificationUri: { type: "string" },
+            expiresIn: { type: "number" },
+            scope: { type: "string" },
           },
         },
-        render: (_args, value) => [
-          {
-            type: "text",
-            text: `请在浏览器打开 ${value.verificationUri} 并输入用户码 ${value.userCode}（约 ${Math.round(
-              value.expiresIn / 60
-            )} 分钟内有效）`,
-          },
-        ],
+        render: (_args, value) => {
+          if (value.stage === "authorized") {
+            return [{ type: "text", text: "已完成授权，可以开始读取飞书内容" }];
+          }
+          const minutes = Math.round((value.expiresIn ?? 0) / 60);
+          if (value.stage === "register") {
+            return [
+              {
+                type: "text",
+                text: `第一步：请打开 ${value.verificationUri} 确认创建应用（用户码 ${value.userCode}，约 ${minutes} 分钟内有效），完成后再次调用 feishu_auth_login`,
+              },
+            ];
+          }
+          return [
+            {
+              type: "text",
+              text: `第二步：请打开 ${value.verificationUri} 完成账号授权（用户码 ${value.userCode}，约 ${minutes} 分钟内有效），完成后再次调用 feishu_auth_login`,
+            },
+          ];
+        },
       },
       async execute(args) {
-        requireAppCredentials(config);
-        const current = auth();
-        const challenge = await current.startLogin(args.scope);
-        void current
-          .completeLogin(challenge)
-          .then(() => documentCache.clear())
-          .catch((error: unknown) => {
-            const message = error instanceof Error ? error.message : String(error);
-            ctx.logger?.warn?.(`飞书设备授权未完成：${message}`);
-          });
-        return {
-          status: "pending",
-          userCode: challenge.userCode,
-          verificationUri: challenge.verificationUri,
-          expiresIn: challenge.expiresIn,
-        };
+        const result = await auth().login(args.scope);
+        if (result.stage === "authorized") await documentCache.clear();
+        return result;
       },
     })
   );
@@ -230,7 +240,7 @@ export function apply(ctx: Context, input?: unknown): void {
       },
       async execute(args) {
         const ref = extractDocRef(args.ref);
-        const sdkReader = reader();
+        const sdkReader = await reader();
         const documentId = await resolveDocumentId(sdkReader, ref);
 
         return readDocumentCached(
@@ -305,7 +315,15 @@ export function apply(ctx: Context, input?: unknown): void {
         },
       },
       async execute(args) {
-        return searchDocuments(searcher(), {
+        const status = await auth().status();
+        if (!hasScope(status.scope, SEARCH_SCOPE)) {
+          throw new Error(
+            "当前授权不含 search:docs:read，无法搜索文档。该权限需要企业管理员在应用上审批；" +
+              "已知文档的链接仍可直接用 feishu_doc_read 读取。"
+          );
+        }
+        const sdkSearcher = await searcher();
+        return searchDocuments(sdkSearcher, {
           query: args.query,
           ...(args.limit === undefined ? {} : { limit: args.limit }),
           ...(args.onlyTitle === undefined ? {} : { onlyTitle: args.onlyTitle }),
@@ -365,7 +383,8 @@ export function apply(ctx: Context, input?: unknown): void {
         },
       },
       async execute(args) {
-        return listChatMessages(messages(), {
+        const sdkMessages = await messages();
+        return listChatMessages(sdkMessages, {
           chatId: args.chatId,
           ...(args.startTime === undefined ? {} : { startTime: args.startTime }),
           ...(args.endTime === undefined ? {} : { endTime: args.endTime }),
@@ -444,13 +463,13 @@ export function apply(ctx: Context, input?: unknown): void {
       },
       async execute(args) {
         const ref = args.ref ? extractDocRef(args.ref) : null;
-        const sdkReader = reader();
+        const sdkReader = await reader();
         const documentId = ref ? await resolveDocumentId(sdkReader, ref) : null;
 
         return runWrite(
           {
             reader: sdkReader,
-            writer: writer(),
+            writer: await writer(),
             policy: config.write,
             limits: { maxBlocks: config.read.maxBlocks, maxBytes: config.read.maxBytes },
           },

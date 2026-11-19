@@ -71,13 +71,36 @@ test("每个工具都有描述与可渲染的输出 schema", () => {
   }
 });
 
-test("未配置应用凭据时读文档给出可操作提示", async () => {
+test("未创建应用时读文档给出可操作提示", async () => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { storage: { dir: tempStorage() } });
 
   await assert.rejects(
     () => toolNamed(tools, "feishu_doc_read").execute({ ref: "https://example.feishu.cn/docx/DocAbc" }),
-    /未配置飞书自建应用/
+    /尚未创建飞书应用/
+  );
+});
+
+test("缺少搜索权限时搜索给出明确提示", async () => {
+  const { ctx, tools } = fakeContext();
+  const storage = tempStorage();
+  apply(ctx, { storage: { dir: storage } });
+
+  // 直接写一份已授权但没有 search:docs:read 的令牌，模拟普通用户的真实授权结果。
+  const tokens = path.join(storage, "tokens.json");
+  fs.writeFileSync(
+    tokens,
+    JSON.stringify({
+      accessToken: "uat",
+      refreshToken: "rt",
+      expiresAt: Date.now() + 3_600_000,
+      scope: "docx:document im:message wiki:wiki",
+    })
+  );
+
+  await assert.rejects(
+    () => toolNamed(tools, "feishu_doc_search").execute({ query: "周报" }),
+    /search:docs:read/
   );
 });
 

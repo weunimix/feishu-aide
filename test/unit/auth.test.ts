@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuthManager } from "../../src/core/auth.js";
-import type { DeviceFlowEnv } from "../../src/core/device-flow.js";
+import { AuthManager, type AuthManagerOptions } from "../../src/core/auth.js";
+import { MemoryAppCredentialStore } from "../../src/core/app-credentials.js";
 import { MemoryTokenStore } from "../../src/core/token-store.js";
+
+const ENDPOINTS = { accounts: "https://accounts.test", open: "https://open.test" };
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -11,103 +13,102 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function envWith(responder: () => Response): DeviceFlowEnv {
-  return {
-    appId: "cli_test",
-    appSecret: "secret",
-    endpoints: { accounts: "https://accounts.test", open: "https://open.test" },
-    fetchImpl: (async () => responder()) as typeof fetch,
-  };
+interface Harness {
+  manager: AuthManager;
+  tokens: MemoryTokenStore;
+  credentials: MemoryAppCredentialStore;
+}
+
+type Responder = (url: string, form: URLSearchParams) => Response;
+
+function makeManager(overrides: Partial<AuthManagerOptions> = {}, responder?: Responder): Harness {
+  const { fetchImpl: overrideFetch, ...rest } = overrides;
+  const tokens = new MemoryTokenStore();
+  const credentials = new MemoryAppCredentialStore();
+  const fetchImpl = (
+    overrideFetch ??
+    (responder
+      ? async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+          responder(String(input), new URLSearchParams(typeof init?.body === "string" ? init.body : ""))
+      : async () => jsonResponse({}))
+  ) as typeof fetch;
+
+  const manager = new AuthManager({
+    domain: "feishu",
+    endpoints: ENDPOINTS,
+    mode: "self-hosted",
+    configCredentials: { appId: "cli_test", appSecret: "secret" },
+    credentials,
+    tokens,
+    ...rest,
+    fetchImpl,
+  });
+  return { manager, tokens, credentials };
 }
 
 test("没有令牌时报未授权", async () => {
-  const store = new MemoryTokenStore();
-  const auth = new AuthManager(envWith(() => jsonResponse({})), store);
-  assert.deepEqual(await auth.status(), { authorized: false });
-  await assert.rejects(auth.getAccessToken(), /尚未授权/);
+  const { manager } = makeManager();
+  assert.deepEqual(await manager.status(), { authorized: false });
+  await assert.rejects(manager.getAccessToken(), /尚未授权/);
 });
 
 test("令牌未过期时直接返回，不发请求", async () => {
-  const store = new MemoryTokenStore();
   let calls = 0;
-  const auth = new AuthManager(
-    envWith(() => {
-      calls += 1;
-      return jsonResponse({});
-    }),
-    store
-  );
-  await store.save({ accessToken: "at", expiresAt: Date.now() + 3_600_000 });
-
-  assert.equal(await auth.getAccessToken(), "at");
-  assert.equal(calls, 0);
-  assert.deepEqual(await auth.status(), {
-    authorized: true,
-    expiresAt: (await store.load())?.expiresAt,
+  const { manager, tokens } = makeManager({}, () => {
+    calls += 1;
+    return jsonResponse({});
   });
+  const expiresAt = Date.now() + 3_600_000;
+  await tokens.save({ accessToken: "at", expiresAt });
+
+  assert.equal(await manager.getAccessToken(), "at");
+  assert.equal(calls, 0);
+  assert.deepEqual(await manager.status(), { authorized: true, expiresAt });
 });
 
 test("令牌过期时用 refresh token 换新并落盘", async () => {
-  const store = new MemoryTokenStore();
-  await store.save({
-    accessToken: "old",
-    refreshToken: "rt",
-    expiresAt: Date.now() - 1000,
-  });
-
-  const auth = new AuthManager(
-    envWith(() => jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 })),
-    store
+  const { manager, tokens } = makeManager({}, () =>
+    jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 })
   );
+  await tokens.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
 
-  assert.equal(await auth.getAccessToken(), "new");
-  const saved = await store.load();
+  assert.equal(await manager.getAccessToken(), "new");
+  const saved = await tokens.load();
   assert.equal(saved?.accessToken, "new");
   assert.equal(saved?.refreshToken, "rt2");
 });
 
 test("并发取令牌只刷新一次", async () => {
-  const store = new MemoryTokenStore();
-  await store.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
-
   let calls = 0;
-  const auth = new AuthManager(
-    envWith(() => {
-      calls += 1;
-      return jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 });
-    }),
-    store
-  );
+  const { manager, tokens } = makeManager({}, () => {
+    calls += 1;
+    return jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 });
+  });
+  await tokens.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
 
-  const tokens = await Promise.all([auth.getAccessToken(), auth.getAccessToken(), auth.getAccessToken()]);
-  assert.deepEqual(tokens, ["new", "new", "new"]);
+  const results = await Promise.all([manager.getAccessToken(), manager.getAccessToken(), manager.getAccessToken()]);
+  assert.deepEqual(results, ["new", "new", "new"]);
   assert.equal(calls, 1);
 });
 
 test("刷新失败即清空授权，要求重新登录", async () => {
-  const store = new MemoryTokenStore();
-  await store.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
+  const { manager, tokens } = makeManager({}, () => jsonResponse({ error: "invalid_grant" }, 400));
+  await tokens.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
 
-  const auth = new AuthManager(envWith(() => jsonResponse({ error: "invalid_grant" }, 400)), store);
-
-  await assert.rejects(auth.getAccessToken());
-  assert.equal(await store.load(), null);
+  await assert.rejects(manager.getAccessToken());
+  assert.equal(await tokens.load(), null);
 });
 
 test("登出清空本地令牌", async () => {
-  const store = new MemoryTokenStore();
-  await store.save({ accessToken: "at", expiresAt: Date.now() + 3_600_000 });
-  const auth = new AuthManager(envWith(() => jsonResponse({})), store);
+  const { manager, tokens } = makeManager();
+  await tokens.save({ accessToken: "at", expiresAt: Date.now() + 3_600_000 });
 
-  await auth.logout();
-  assert.equal(await store.load(), null);
-  assert.deepEqual(await auth.status(), { authorized: false });
+  await manager.logout();
+  assert.equal(await tokens.load(), null);
+  assert.deepEqual(await manager.status(), { authorized: false });
 });
 
 test("刷新期间登出：在途结果不再写回令牌", async () => {
-  const store = new MemoryTokenStore();
-  await store.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
-
   let entered!: () => void;
   const started = new Promise<void>((resolve) => {
     entered = resolve;
@@ -116,23 +117,131 @@ test("刷新期间登出：在途结果不再写回令牌", async () => {
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const env: DeviceFlowEnv = {
-    appId: "cli_test",
-    appSecret: "secret",
-    endpoints: { accounts: "https://accounts.test", open: "https://open.test" },
-    fetchImpl: (async () => {
-      entered();
-      await gate;
-      return jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 });
-    }) as typeof fetch,
-  };
-  const auth = new AuthManager(env, store);
+  const fetchImpl = (async () => {
+    entered();
+    await gate;
+    return jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 });
+  }) as typeof fetch;
 
-  const pending = auth.getAccessToken();
+  const { manager, tokens } = makeManager({ fetchImpl });
+  await tokens.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
+
+  const pending = manager.getAccessToken();
   await started;
-  await auth.logout();
+  await manager.logout();
   release();
   await pending.catch(() => undefined);
 
-  assert.equal(await store.load(), null);
+  assert.equal(await tokens.load(), null);
+});
+
+test("自动模式：没有应用凭据时先返回创建应用的确认地址", async () => {
+  const { manager } = makeManager(
+    { mode: "auto", configCredentials: { appId: "", appSecret: "" } },
+    (url, form) => {
+      assert.equal(url, "https://accounts.test/oauth/v1/app/registration");
+      assert.equal(form.get("action"), "begin");
+      return jsonResponse({
+        device_code: "dc-1",
+        user_code: "UC-1",
+        verification_uri: "https://reg.test/verify",
+        expires_in: 3600,
+        interval: 5,
+      });
+    }
+  );
+
+  const result = await manager.login();
+  assert.equal(result.stage, "register");
+  assert.equal(result.userCode, "UC-1");
+  assert.equal(result.verificationUri, "https://reg.test/verify");
+  assert.deepEqual(await manager.status(), { authorized: false, pending: "register" });
+});
+
+test("自动模式：注册还没确认时再调用仍停在 register", async () => {
+  const { manager } = makeManager(
+    { mode: "auto", configCredentials: { appId: "", appSecret: "" } },
+    (_url, form) =>
+      form.get("action") === "begin"
+        ? jsonResponse({
+            device_code: "dc-1",
+            user_code: "UC-1",
+            verification_uri: "https://reg.test/verify",
+            expires_in: 3600,
+            interval: 5,
+          })
+        : jsonResponse({ error: "authorization_pending", code: 20094 }, 400)
+  );
+
+  await manager.login();
+  const again = await manager.login();
+  assert.equal(again.stage, "register");
+});
+
+test("自动模式：注册确认后保存凭据并立刻发起用户授权", async () => {
+  const { manager, credentials } = makeManager(
+    { mode: "auto", configCredentials: { appId: "", appSecret: "" } },
+    (url, form) => {
+      if (url.endsWith("/oauth/v1/app/registration")) {
+        return form.get("action") === "begin"
+          ? jsonResponse({
+              device_code: "dc-1",
+              user_code: "UC-1",
+              verification_uri: "https://reg.test/verify",
+              expires_in: 3600,
+              interval: 5,
+            })
+          : jsonResponse({ client_id: "cli_auto", client_secret: "secret_auto" });
+      }
+      assert.equal(url, "https://accounts.test/oauth/v1/device_authorization");
+      return jsonResponse({
+        device_code: "dev-1",
+        user_code: "USER-1",
+        verification_uri: "https://auth.test/verify",
+        expires_in: 600,
+        interval: 5,
+      });
+    }
+  );
+
+  await manager.login();
+  const result = await manager.login();
+
+  assert.equal(result.stage, "authorize");
+  assert.equal(result.verificationUri, "https://auth.test/verify");
+  assert.deepEqual(await credentials.load(), { appId: "cli_auto", appSecret: "secret_auto" });
+});
+
+test("授权轮询完成：返回 authorized 并保存令牌", async () => {
+  const { manager, tokens } = makeManager({}, (url) => {
+    if (url === "https://accounts.test/oauth/v1/device_authorization") {
+      return jsonResponse({
+        device_code: "dev-1",
+        user_code: "USER-1",
+        verification_uri: "https://auth.test/verify",
+        expires_in: 600,
+        interval: 5,
+      });
+    }
+    return jsonResponse({
+      access_token: "uat",
+      refresh_token: "rt",
+      expires_in: 7200,
+      scope: "docx:document im:message",
+    });
+  });
+
+  const first = await manager.login();
+  assert.equal(first.stage, "authorize");
+
+  const second = await manager.login();
+  assert.equal(second.stage, "authorized");
+  assert.equal(second.scope, "docx:document im:message");
+  assert.equal((await tokens.load())?.accessToken, "uat");
+});
+
+test("self-hosted 模式缺凭据时报可操作错误", async () => {
+  const { manager } = makeManager({ mode: "self-hosted", configCredentials: { appId: "", appSecret: "" } });
+  await assert.rejects(manager.login(), /auth\.mode=self-hosted/);
+  await assert.rejects(manager.getAppCredentials(), /auth\.mode=self-hosted/);
 });

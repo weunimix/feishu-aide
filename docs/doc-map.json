@@ -61,6 +61,8 @@
         "anchor": "3-数据域与事实源",
         "heading": "3. 数据域与事实源",
         "src": [
+          "src/core/app-credentials.ts",
+          "src/core/app-registration.ts",
           "src/core/auth.ts",
           "src/core/cache.ts",
           "src/core/device-flow.ts",

@@ -11,7 +11,7 @@ MVP 范围：
 
 - 读：docx 文档与 wiki 节点（wiki 链接解析到背后的文档）、会话历史消息；
 - 写：已有文档的块级修改、插入与新建文档；
-- 认证：设备流 OAuth，用户身份授权，token 由插件保存并刷新；
+- 认证：首次使用时插件自动注册一个个人应用（PersonalAgent），随后以用户身份完成设备流授权；用户只需在飞书页面上各确认一次，token 由插件保存并刷新；
 - 缓存：按需拉取，按版本缓存，不做本地全量同步与索引。
 
 非目标（本阶段不做，也不为它们预留结构）：
@@ -37,21 +37,21 @@ MVP 范围：
 另一个不可回避的事实：沙箱约束的是 agent 的 shell 执行路径，插件工具在宿主进程内执行，不经过该路径。两条路径的边界由平台划分，插件不去改变它，也不把业务逻辑分散到两侧。
 
 ## 3. 数据域与事实源
-<!-- src: src/core/docx.ts, src/core/wiki.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/token-store.ts, src/core/cache.ts -->
+<!-- src: src/core/docx.ts, src/core/wiki.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/app-registration.ts, src/core/app-credentials.ts, src/core/token-store.ts, src/core/cache.ts -->
 
 | 数据域 | 事实源 | 插件的角色 | 规则 |
 |---|---|---|---|
 | 文档内容与块 | 飞书，按 `revision_id` 版本化 | 缓存与视图 | 缓存键是 `(document_id, revision_id, 读取预算)`，不能用文档 id 单独做键 |
 | 消息 | 飞书时间轴，按 `message_id` | 缓存 | 按时间区间拉取，不维护"最新消息"游标 |
 | wiki 树 | 飞书 wiki | 透传 | 不落地持久树 |
-| 凭据 | 飞书 OAuth，根是 refresh token | 持有并刷新 | 只存一份，在插件存储目录的 `tokens.json`；不进配置 |
+| 凭据 | 飞书 OAuth，根是 refresh token | 持有并刷新 | 分两层：插件自动注册的应用凭据在 `app.json`，用户令牌在 `tokens.json`；都只存一份，不进配置 |
 | 配置 | 宿主传入的插件配置 | 只读 | 装配时解析一次快照，不在多处解析 |
 | 工具集 | 插件源码 | 唯一声明处 | 不另维护工具清单文档 |
 | 缓存 | 插件存储目录下的文件 | 可丢弃 | 按 TTL 过期，条目数上限 200、超限淘汰最旧；启动、写缓存与登出触发清扫并回收残留临时文件；不做全量镜像 |
 
 四条不变量：
 
-1. **单一写者**：只有插件的存储模块写磁盘（`tokens.json` 与缓存目录）；工具之间不直接互写状态。
+1. **单一写者**：只有插件的存储模块写磁盘（`app.json`、`tokens.json` 与缓存目录）；工具之间不直接互写状态。
 2. **派生可丢**：缓存、Markdown 渲染、搜索片段都可以整块删除后重建。
 3. **引用闭合**：跨步骤引用一律写成 `(document_id, revision_id, block_id)`；写回必须以块为单位，不以文本偏移为单位。
 4. **身份唯一**：文档读写只用 user token，禁止静默回落到 tenant token。身份漂移比报错更难排查。
@@ -64,6 +64,8 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 依赖面刻意收窄到平台两个 API：`ctx.tools.register`（工具注册）与壳层传入的配置（`resolveConfig`）。不依赖客户端包，不依赖插件管理器内部结构，不依赖 `ctx.agents` 的内部字段。
 
 外部依赖有两个：飞书官方 SDK（`@larksuiteoapi/node-sdk`）与配置 schema 库（`@deepseek-ai/schemastery`，DSH 插件生态通用）。不引入 MCP SDK、不引入文档转换库；块到 Markdown 的渲染由本项目实现，因为它是视图，需要完全可控的降级行为。
+
+宿主侧依赖（`@deepseek-ai/dsh-tools`、`@deepseek-ai/cordis`）以 `peerDependencies` 声明，范围对齐 DSH 0.2.1 线路。插件管理器在安装时做兼容性校验，版本不符直接拒绝加载；这是本插件唯一跟随宿主版本的地方，升级 DSH 后需要同步这两条范围。
 
 SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正文不能进日志，所以适配层传入一个不接收任何消息的 logger（`LoggerLevel.fatal` 不够——该枚举的 fatal 是 0，SDK 用 `||` 取默认值时会当成没传而落到 info）。错误由适配层上抛，最终只经过工具结果。
 
@@ -86,17 +88,17 @@ SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正�
 
 | 工具 | 用途 | 读/写 | 状态 |
 |---|---|---|---|
-| `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope | 读 | 已实现 |
-| `feishu_auth_login` | 发起设备流授权，返回验证地址与用户码 | 写（本地凭据） | 已实现 |
-| `feishu_auth_logout` | 撤销授权，清空本地令牌与文档缓存 | 写（本地凭据） | 已实现 |
+| `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope，以及还差哪一步确认 | 读 | 已实现 |
+| `feishu_auth_login` | 推进一步授权：先返回创建应用的确认地址，再返回授权地址与用户码 | 写（本地凭据） | 已实现 |
+| `feishu_auth_logout` | 撤销授权，清空本地令牌与文档缓存（保留应用凭据） | 写（本地凭据） | 已实现 |
 | `feishu_doc_read` | 读 docx 文档与 wiki 节点，返回块、版本与 Markdown | 读 | 已实现 |
 | `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |
-| `feishu_doc_search` | 按关键词搜索文档与 wiki | 读 | 已实现 |
+| `feishu_doc_search` | 按关键词搜索文档与 wiki；需要 `search:docs:read`，缺权限时返回明确提示 | 读 | 已实现 |
 | `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 已实现 |
 
 读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`，命中缓存时另带 `fromCache`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。
 
-授权类工具只返回状态，不返回 token 值。
+授权类工具只返回状态与下一步的确认地址，不返回 token 值与应用密钥。
 
 ## 6. 写回语义
 <!-- src: src/core/write.ts, src/core/write-plan.ts, src/core/sdk-writer.ts -->
@@ -119,9 +121,10 @@ SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正�
 ```yaml
 feishuAide:
   auth:
+    mode: auto              # auto | self-hosted
     domain: feishu          # feishu | lark
-    appId: ""               # 自建应用的 App ID
-    appSecret: ""           # 自建应用的 App Secret，secret 字段
+    appId: ""               # 仅 self-hosted 需要
+    appSecret: ""           # 仅 self-hosted 需要，secret 字段
   storage:
     dir: ""                 # 凭据与状态目录；空则用 $DSH_HOME/feishu-aide
   read:
@@ -135,7 +138,11 @@ feishuAide:
     requireRevisionMatch: true
 ```
 
-设备流授权要求用户自建飞书应用（并在应用后台开通所需权限），插件不内置任何应用凭据。未配置时工具返回可操作提示，宿主启动不受影响。
+`auth.mode=auto`（默认）时不需要任何应用配置：`feishu_auth_login` 先让用户在飞书页面上确认一次，插件随即自动注册一个个人应用并把凭据存进 `app.json`；紧接着给出用户授权的确认地址，用户确认后得到本人身份的用户令牌。用户无需进入开放平台，也不需要租户管理员权限。
+
+`search:docs:read` 需要企业管理员在应用上审批，因此搜索是可选能力：授权里没有该 scope 时，`feishu_doc_search` 返回明确提示，其余读、写工具不受影响。
+
+`auth.mode=self-hosted` 用于组织已有自建应用的情况，此时必须填写 `auth.appId` 与 `auth.appSecret`，设备流授权使用该应用。未配置时工具返回可操作提示，宿主启动不受影响。
 
 `write.enabled=false` 时写工具直接返回禁用原因，不发起任何飞书请求。
 
@@ -145,15 +152,17 @@ feishuAide:
 MVP 完成的判据：
 
 - 未配置时，所有工具给出可操作提示，不崩溃；
+- 首次使用只需两次确认（建应用、授权），不要求用户进入开放平台；
 - 能完成"授权 → 读文档 → 修改一个块 → 回读确认"的完整链路；
 - 版本不匹配时拒绝写回，并给出当前版本；
 - 同一写请求重试两次，文档只变化一次；
 - 离线测试覆盖分页、限流、未知块类型、token 过期、写回冲突；
-- 工具输出与日志中不出现 token 值。
+- 工具输出与日志中不出现 token 值与应用密钥。
 
 ## 9. 决策记录
 <!-- src: none -->
 
 - 2026-11-20：形态定为 DSH 插件；MVP 不做客户端 UI；文档读写只用 user token；按需缓存；写回范围与确认方式可配置。
 - 2026-11-20：配置由宿主装配时传入；凭据存插件存储目录的 `tokens.json`，不入配置，也不依赖 settings 服务的动态秘密能力。
+- 2026-11-20：接入方式定稿为「首次使用自动注册个人应用 + 设备流授权」，自建应用降级为 `auth.mode=self-hosted` 的可选覆盖。理由：要求用户先创建应用等于要求组织权限，与「用户把 agent 接进自己账号」的目标冲突。个人应用的注册流程已在真实租户上跑通（建应用、授权、读写、刷新 token）。搜索因 `search:docs:read` 需管理员审批而列为可选能力。
 - 同日作废：core library + stdio MCP server 的分发形态、`tenant_access_token` 首选、独立 CLI 产品面。以上来自本仓库早期方案，不再适用。
