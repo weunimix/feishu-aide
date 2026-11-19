@@ -13,10 +13,17 @@ export interface RecordedRequest {
   body: unknown;
 }
 
+export interface FakeBlock {
+  block_id?: string;
+  block_type?: number;
+  text?: { elements?: unknown[] };
+  [key: string]: unknown;
+}
+
 export interface FakeDocument {
   title: string;
   revisionId: string;
-  blocks: unknown[];
+  blocks: FakeBlock[];
 }
 
 export interface FakeWikiNode {
@@ -44,6 +51,10 @@ export class FakeFeishuServer {
   readonly requests: RecordedRequest[] = [];
   readonly fixtures: FakeFixtures = { documents: {}, wikiNodes: {}, searchUnits: {}, messageItems: {} };
   readonly overrides = new Map<string, RouteHandler>();
+  /** 幂等键到首次响应的映射：同一 client_token 再来只回放，不重复落盘。 */
+  readonly patchedResponses = new Map<string, unknown>();
+  /** 真正落到文档上的写次数（同一幂等键不会累加）。 */
+  docWrites = 0;
 
   #server: http.Server | null = null;
   #url = "";
@@ -132,6 +143,11 @@ export class FakeFeishuServer {
       return { code: 0, data: { items: document.blocks, has_more: false } };
     }
 
+    const patchMatch = /^\/open-apis\/docx\/v1\/documents\/([^/]+)\/blocks\/([^/]+)$/.exec(request.path);
+    if (patchMatch !== null && request.method === "PATCH") {
+      return this.#patchBlock(patchMatch[1] ?? "", patchMatch[2] ?? "", request);
+    }
+
     if (request.path === "/open-apis/wiki/v2/spaces/get_node") {
       const token = request.query.get("token") ?? "";
       const node = this.fixtures.wikiNodes[token];
@@ -156,6 +172,41 @@ export class FakeFeishuServer {
 
     return { code: 404, msg: `fake server 没有实现 ${request.method} ${request.path}` };
   }
+
+  /**
+   * 文本块更新。按 client_token 去重：飞书的写接口是幂等的，
+   * 网络重试带着同一个 token 再来时不能把内容改两遍。
+   */
+  #patchBlock(documentId: string, blockId: string, request: RecordedRequest): unknown {
+    const document = this.fixtures.documents[documentId];
+    if (document === undefined) return { code: 1310202, msg: "document not found" };
+
+    const clientToken = request.query.get("client_token") ?? "";
+    const cached = clientToken === "" ? undefined : this.patchedResponses.get(clientToken);
+    if (cached !== undefined) return cached;
+
+    const block = document.blocks.find((item) => item.block_id === blockId);
+    if (block === undefined) return { code: 1310203, msg: "block not found" };
+
+    const body = recordOf(request.body);
+    const data = recordOf(body.data);
+    const update = recordOf(body.update_text_elements ?? data.update_text_elements);
+    const elements = Array.isArray(update.elements) ? update.elements : null;
+    if (elements === null) return { code: 1770001, msg: "update_text_elements 缺失" };
+
+    block.text = { ...(block.text ?? {}), elements };
+    const nextRevision = String(Number(document.revisionId) + 1);
+    document.revisionId = nextRevision;
+    this.docWrites += 1;
+
+    const response = { code: 0, data: { document_revision_id: Number(nextRevision) } };
+    if (clientToken !== "") this.patchedResponses.set(clientToken, response);
+    return response;
+  }
+}
+
+function recordOf(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 async function readBody(req: http.IncomingMessage): Promise<unknown> {
