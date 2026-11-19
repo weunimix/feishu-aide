@@ -15,3 +15,5 @@ export { runWrite, WriteConflict } from "./core/write.js";
 export type { WriteOutcome, WritePolicy, WriteRequest } from "./core/write.js";
 export { searchDocuments, normalizeQuery, stripHighlight, toHits, SearchError } from "./core/search.js";
 export type { DocSearcher, SearchHit, SearchQuery, SearchResult } from "./core/search.js";
+export { listChatMessages, normalizeMessageQuery, extractText, toMessages, MessageError } from "./core/messages.js";
+export type { ChatMessage, MessagePage, MessageQuery, MessageReader } from "./core/messages.js";

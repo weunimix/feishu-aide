@@ -9,7 +9,7 @@ feishu-aide 是一个 DSH 插件：让用户在 **DSH 会话里**读飞书文档
 
 MVP 范围：
 
-- 读：docx 文档与 wiki 节点（wiki 链接解析到背后的文档）；
+- 读：docx 文档与 wiki 节点（wiki 链接解析到背后的文档）、会话历史消息；
 - 写：已有文档的块级修改、插入与新建文档；
 - 认证：设备流 OAuth，用户身份授权，token 由插件保存并刷新；
 - 缓存：按需拉取，按版本缓存，不做本地全量同步与索引。
@@ -59,7 +59,7 @@ MVP 范围：
 Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown，写工具只接受块级操作。
 
 ## 4. 维护性
-<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-writer.ts, src/core/feishu-json.ts, src/core/search.ts, src/core/markdown.ts, src/plugin.ts -->
+<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-messages.ts, src/core/sdk-writer.ts, src/core/feishu-json.ts, src/core/search.ts, src/core/messages.ts, src/core/markdown.ts, src/plugin.ts -->
 
 依赖面刻意收窄到平台两个 API：`ctx.tools.register`（工具注册）与壳层传入的配置（`resolveConfig`）。不依赖客户端包，不依赖插件管理器内部结构，不依赖 `ctx.agents` 的内部字段。
 
@@ -89,7 +89,7 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 | `feishu_doc_read` | 读 docx 文档与 wiki 节点，返回块、版本与 Markdown | 读 | 已实现 |
 | `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |
 | `feishu_doc_search` | 按关键词搜索文档与 wiki | 读 | 已实现 |
-| `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 未实现 |
+| `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 已实现 |
 
 读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。
 

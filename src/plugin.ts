@@ -6,6 +6,8 @@ import { AuthManager } from "./core/auth.js";
 import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
 import { OFFICIAL_ENDPOINTS, type DeviceFlowEnv } from "./core/device-flow.js";
 import { extractDocRef, readDocument } from "./core/docx.js";
+import { listChatMessages } from "./core/messages.js";
+import { createSdkMessageReader } from "./core/sdk-messages.js";
 import { createSdkReader } from "./core/sdk-reader.js";
 import { createSdkSearcher } from "./core/sdk-searcher.js";
 import { createSdkWriter } from "./core/sdk-writer.js";
@@ -62,6 +64,13 @@ export function apply(ctx: Context, input?: unknown): void {
 
   const searcher = () =>
     createSdkSearcher({
+      ...requireAppCredentials(config),
+      domain: config.auth.domain,
+      userAccessToken: () => auth().getAccessToken(),
+    });
+
+  const messages = () =>
+    createSdkMessageReader({
       ...requireAppCredentials(config),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
@@ -256,6 +265,66 @@ export function apply(ctx: Context, input?: unknown): void {
           ...(args.limit === undefined ? {} : { limit: args.limit }),
           ...(args.onlyTitle === undefined ? {} : { onlyTitle: args.onlyTitle }),
           ...(args.docTypes === undefined ? {} : { docTypes: args.docTypes }),
+        });
+      },
+    })
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "feishu_chat_messages",
+      description:
+        "读取一个会话（群聊或单聊）在时间区间内的历史消息，按时间正序返回发送人、时间与可读文本。会话 id 是 oc_ 开头的 chat_id。",
+      parameters: {
+        chatId: { type: "string", required: true, description: "会话 id（oc_ 开头的 chat_id）" },
+        startTime: { type: "string", description: "起始时间，ISO 格式或秒级时间戳；缺省不限" },
+        endTime: { type: "string", description: "结束时间，ISO 格式或秒级时间戳；缺省不限" },
+        limit: { type: "number", description: "返回条数，1 到 50，缺省 20" },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            messages: {
+              type: "array",
+              required: true,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  messageId: { type: "string", required: true },
+                  type: { type: "string", required: true },
+                  text: { type: "string", required: true },
+                  senderName: { type: "string" },
+                  senderId: { type: "string" },
+                  sentAt: { type: "number", required: true },
+                },
+              },
+            },
+            hasMore: { type: "boolean", required: true },
+            pageToken: { type: "string" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.messages.length === 0) {
+            return [{ type: "text", text: "该时间区间内没有消息" }];
+          }
+          const lines = value.messages.map((message) => {
+            const time = new Date(message.sentAt).toLocaleString();
+            const who = message.senderName ?? message.senderId ?? "未知发送人";
+            return `[${time}] ${who}: ${message.text}`;
+          });
+          if (value.hasMore) lines.push("还有更多消息，可以收窄时间区间或调大 limit");
+          return [{ type: "text", text: lines.join("\n") }];
+        },
+      },
+      async execute(args) {
+        return listChatMessages(messages(), {
+          chatId: args.chatId,
+          ...(args.startTime === undefined ? {} : { startTime: args.startTime }),
+          ...(args.endTime === undefined ? {} : { endTime: args.endTime }),
+          ...(args.limit === undefined ? {} : { limit: args.limit }),
         });
       },
     })

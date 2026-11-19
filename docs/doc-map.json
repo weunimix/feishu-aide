@@ -74,6 +74,8 @@
         "src": [
           "src/core/feishu-json.ts",
           "src/core/markdown.ts",
+          "src/core/messages.ts",
+          "src/core/sdk-messages.ts",
           "src/core/sdk-reader.ts",
           "src/core/sdk-searcher.ts",
           "src/core/sdk-writer.ts",
