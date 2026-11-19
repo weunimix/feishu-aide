@@ -160,6 +160,17 @@ test("只新建文档时不读快照", async () => {
   assert.equal(parts.calls[0]?.kind, "document");
 });
 
+test("新建文档时回传新文档 id", async () => {
+  const parts = setup();
+  const outcome = await runWrite(deps(parts, { confirm: "never" }), {
+    documentId: null,
+    ops: [{ op: "create_document", title: "会议纪要" }],
+  });
+
+  assert.equal(outcome.documentId, "doc-new");
+  assert.equal(outcome.results[0]?.documentId, "doc-new");
+});
+
 test("操作种类被配置收窄时拒绝未允许的操作", async () => {
   const parts = setup();
   await assert.rejects(

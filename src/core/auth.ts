@@ -51,6 +51,13 @@ export interface AuthManagerOptions {
   fetchImpl?: typeof fetch;
 }
 
+/**
+ * 默认申请的权限：文档与 wiki 的读写、消息只读、离线刷新。
+ * `search:docs:read` 需要企业管理员在应用上审批，默认不申请；调用方可以显式传 scope 覆盖。
+ */
+export const DEFAULT_SCOPES =
+  "docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly offline_access";
+
 export class AuthManager {
   private refreshing: Promise<TokenSet> | null = null;
   /** 每次登出 / 重新登录都自增，用来让在途刷新不回写已经作废的身份。 */
@@ -201,7 +208,8 @@ export class AuthManager {
 
   private async startAuthorization(scope?: string): Promise<LoginResult> {
     const env = await this.env();
-    const challenge = await startDeviceFlow(env, scope ? { scope } : {});
+    const requested = scope?.trim() ? scope.trim() : DEFAULT_SCOPES;
+    const challenge = await startDeviceFlow(env, { scope: requested });
     this.authorization = challenge;
     return this.authorizeResult(challenge);
   }

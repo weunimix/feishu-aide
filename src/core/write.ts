@@ -27,6 +27,8 @@ export interface WriteResult {
   op: string;
   ok: boolean;
   error?: string;
+  /** 新建文档时回传新文档 id，调用方据此继续读取或写入。 */
+  documentId?: string;
 }
 
 export interface WriteOutcome {
@@ -96,8 +98,8 @@ async function execute(
   for (const [index, item] of planned.entries()) {
     try {
       if (item.kind === "create_document") {
-        await deps.writer.createDocument(item.title);
-        results.push({ op: labelOf(item), ok: true });
+        const created = await deps.writer.createDocument(item.title);
+        results.push({ op: labelOf(item), ok: true, documentId: created.documentId });
         continue;
       }
 
@@ -185,15 +187,16 @@ export async function runWrite(deps: WriteDeps, request: WriteRequest): Promise<
 
   const results = await execute(deps, planned, request.documentId, request.baseRevision ?? "");
   const saved = results.some((result) => result.ok);
+  const createdId = request.documentId ?? results.find((result) => result.documentId)?.documentId;
 
   let revisionId: string | undefined;
-  if (saved && request.documentId) {
-    revisionId = (await deps.reader.getDocument(request.documentId)).revisionId;
+  if (saved && createdId) {
+    revisionId = (await deps.reader.getDocument(createdId)).revisionId;
   }
 
   return {
     applied: saved,
-    ...(request.documentId ? { documentId: request.documentId } : {}),
+    ...(createdId ? { documentId: createdId } : {}),
     ...(revisionId ? { revisionId } : {}),
     plan,
     results,

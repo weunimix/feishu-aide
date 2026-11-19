@@ -133,7 +133,11 @@ export function apply(ctx: Context, input?: unknown): void {
       description:
         "推进飞书接入：第一次调用创建应用（用户确认一次），之后调用发起用户授权或查询是否完成。按返回的地址操作后再次调用本工具即可。",
       parameters: {
-        scope: { type: "string", description: "可选，空格分隔的权限范围，例如 docx:document wiki:wiki" },
+        scope: {
+          type: "string",
+          description:
+            "可选，空格分隔的权限范围；不传则申请文档与 wiki 读写、消息只读、离线刷新（docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly offline_access）。search:docs:read 需要企业管理员审批，需要搜索时显式传入",
+        },
       },
       output: {
         schema: {
@@ -442,6 +446,7 @@ export function apply(ctx: Context, input?: unknown): void {
                   op: { type: "string", required: true },
                   ok: { type: "boolean", required: true },
                   error: { type: "string" },
+                  documentId: { type: "string", description: "新建文档时回传的新文档 id" },
                 },
               },
             },
@@ -455,6 +460,7 @@ export function apply(ctx: Context, input?: unknown): void {
               if (!result.ok) lines.push(`失败：${result.op} — ${result.error ?? "未知错误"}`);
             }
             if (value.revisionId) lines.push(`新版本：${value.revisionId}`);
+            if (value.documentId) lines.push(`文档：${value.documentId}`);
           } else {
             lines.push("以上是待执行计划；确认后带 apply=true 再调用一次");
           }

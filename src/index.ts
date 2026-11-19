@@ -1,7 +1,7 @@
 export { apply, inject, name } from "./plugin.js";
 export { Config, resolveConfig } from "./core/config.js";
 export type { FeishuAideConfig } from "./core/config.js";
-export { AuthManager } from "./core/auth.js";
+export { AuthManager, DEFAULT_SCOPES } from "./core/auth.js";
 export type { AuthManagerOptions, AuthStatus, LoginResult } from "./core/auth.js";
 export { FileAppCredentialStore, MemoryAppCredentialStore } from "./core/app-credentials.js";
 export type { AppCredentialStore, AppCredentials } from "./core/app-credentials.js";
