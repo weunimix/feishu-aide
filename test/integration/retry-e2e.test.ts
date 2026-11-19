@@ -72,22 +72,38 @@ test("非限流错误只请求一次，错误信息里也没有令牌", async ()
       return rawResponse({ code: 1310202, msg: "document not found" }, { status: 404 });
     });
 
-    const reader = createSdkReader({
-      appId: "cli_x",
-      appSecret: "secret",
-      domain: "feishu",
-      userAccessToken: async () => TOKEN,
-      domainOverride: server.url,
-    });
+    const logged: string[] = [];
+    const originals = { log: console.log, warn: console.warn, error: console.error };
+    const capture = (...args: unknown[]) => void logged.push(args.map(String).join(" "));
+    console.log = capture;
+    console.warn = capture;
+    console.error = capture;
+    try {
+      const reader = createSdkReader({
+        appId: "cli_x",
+        appSecret: "secret",
+        domain: "feishu",
+        userAccessToken: async () => TOKEN,
+        domainOverride: server.url,
+      });
 
-    await assert.rejects(
-      () => reader.getDocument("DocAbc"),
-      (error: unknown) => {
-        const message = error instanceof Error ? error.message : String(error);
-        assert.ok(!message.includes(TOKEN), `错误信息泄漏了令牌：${message}`);
-        return true;
-      }
-    );
+      await assert.rejects(
+        () => reader.getDocument("DocAbc"),
+        (error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          assert.ok(!message.includes(TOKEN), `错误信息泄漏了令牌：${message}`);
+          return true;
+        }
+      );
+    } finally {
+      console.log = originals.log;
+      console.warn = originals.warn;
+      console.error = originals.error;
+    }
+
+    // SDK 的 logger 默认会把整个 axios 错误（含请求头与响应体）打出来，
+    // 适配层必须传入静音 logger；这里断言一行都不打印。
+    assert.deepEqual(logged, [], `SDK 不该往控制台写任何东西：${logged.join("\n")}`);
     assert.equal(calls, 1);
   } finally {
     await server.close();

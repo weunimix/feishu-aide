@@ -49,6 +49,7 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 3. 文档块检查 `docs:check`（无依赖）
 4. `pnpm install --frozen-lockfile`
 5. `typecheck` → `test:unit` → `build`
+6. `pack:check`（在 `build` 之后，校验 tarball 内容）
 
 真实飞书验证不放在 CI：设备流授权需要人在浏览器里点确认，无法无人值守复现。这部分由维护者在本地手动验证，结果写进 PR 的验证证据。
 
@@ -70,8 +71,8 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 
 - **P0（done）**：仓库骨架。
 - **P1（done）**：CI 骨架、secret scan、策略单测、路径安全、文档块映射。
-- **P2（进行中）**：fake Feishu server + integration；读、搜索、消息、块级写回，以及写冲突与幂等的端到端链路已覆盖；读文档按版本缓存并补齐生命周期；限流退避、未知块降级与插件装配 smoke 已覆盖。
-- **P3**：按 npm 发布形态决定 pack 检查。
+- **P2（done）**：fake Feishu server + integration；读、搜索、消息、块级写回，以及写冲突与幂等的端到端链路已覆盖；读文档按版本缓存并补齐生命周期；限流退避、未知块降级与插件装配 smoke 已覆盖。
+- **P3（打包 done，发布未定）**：`pack:check` 校验 tarball 内容（入口、`cordis.patch.yml`、不含 `src/` 与 `test/`、无陈旧 `dist` 产物）；分发先用 tarball，真实飞书冒烟通过后再决定是否发 npm 公共包。
 
 ## 7. 验收
 <!-- src: none -->
@@ -84,6 +85,7 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 - [x] 429 按 `Retry-After` 退避且有上限。
 - [x] 日志与工具输出中无 token、无文档正文。
 - [x] 插件装配后工具列表与 schema 与代码一致。
+- [x] `pnpm pack` 的产物含入口与 `cordis.patch.yml`，不含 `src/`、`test/`，也没有源码已删除的陈旧 `dist` 产物。
 
 ## 8. 决策记录
 <!-- src: none -->
@@ -91,3 +93,4 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 - 2026-11-14：仓库骨架与 CI 方案落地。
 - 2026-11-15：文档块级 `src` 映射落地。
 - 2026-11-20：产品形态改为 DSH 插件（见 DESIGN.md）。早期方案中的 MCP server、CLI 产品面、全量同步与本地索引不再在范围内，相关 CI 条目随之移除。
+- 2026-11-20：分发先走 tarball、真实冒烟通过后再发 npm 公共包；`build` 前置清空 `dist`，`pack:check` 进 CI。

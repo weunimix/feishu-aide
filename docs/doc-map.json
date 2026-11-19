@@ -77,6 +77,7 @@
           "src/core/markdown.ts",
           "src/core/messages.ts",
           "src/core/retry.ts",
+          "src/core/sdk-logger.ts",
           "src/core/sdk-messages.ts",
           "src/core/sdk-reader.ts",
           "src/core/sdk-searcher.ts",
@@ -170,6 +171,11 @@
       {
         "anchor": "能力与进度",
         "heading": "能力与进度",
+        "src": []
+      },
+      {
+        "anchor": "安装",
+        "heading": "安装",
         "src": []
       },
       {

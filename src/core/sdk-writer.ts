@@ -1,6 +1,7 @@
 import * as lark from "@larksuiteoapi/node-sdk";
 import { asRecord, unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { silentLogger } from "./sdk-logger.js";
 import type { Domain } from "./device-flow.js";
 
 /**
@@ -53,7 +54,7 @@ export function createSdkWriter(options: WriterOptions): DocxWriteApi {
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.fatal, // 同 sdk-reader：写请求的 data 就是正文，不能被 SDK 打进日志
+    logger: silentLogger, // 同 sdk-reader：写请求的 data 就是正文，不能被 SDK 打进日志
   });
 
   const requestOptions = async () => lark.withUserAccessToken(await options.userAccessToken());

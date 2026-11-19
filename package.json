@@ -1,7 +1,10 @@
 {
   "name": "feishu-aide",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "DSH 插件：在会话中读取飞书文档、wiki 与消息，并把修改写回飞书。",
   "type": "module",
   "license": "MIT",
@@ -27,11 +30,14 @@
     "cordis.patch.yml"
   ],
   "scripts": {
+    "prebuild": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
+    "pack:check": "node scripts/check-pack.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "pnpm typecheck && pnpm test:unit && pnpm test:policy",
     "test:unit": "tsx --test \"test/**/*.test.ts\"",
-    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs scripts/check-docs.test.mjs scripts/check-pr-title.test.mjs scripts/check-repo-settings.test.mjs scripts/check-branch-name.test.mjs scripts/label-pr-size.test.mjs",
+    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs scripts/check-docs.test.mjs scripts/check-pr-title.test.mjs scripts/check-repo-settings.test.mjs scripts/check-branch-name.test.mjs scripts/label-pr-size.test.mjs scripts/check-pack.test.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "docs:map": "node scripts/check-docs.mjs --write",

@@ -2,6 +2,7 @@ import * as lark from "@larksuiteoapi/node-sdk";
 import type { Domain } from "./device-flow.js";
 import { unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { silentLogger } from "./sdk-logger.js";
 import type { MessageQuery, MessageReader, RawMessagePage } from "./messages.js";
 
 /** 会话消息的 SDK 适配层：只负责取原始条目，归一化在 `messages.ts`。 */
@@ -20,7 +21,7 @@ export function createSdkMessageReader(options: MessageReaderOptions): MessageRe
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.fatal,
+    logger: silentLogger,
   });
 
   return {

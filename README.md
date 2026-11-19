@@ -14,6 +14,22 @@ Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、
 - 已实现：替换文本块、插入文本块、新建文档，写前校验版本，操作带幂等键（`feishu_doc_write`）；
 - 已实现：读文档按 `(文档, 版本, 读取预算)` 缓存块内容，版本变化自动失效，TTL 到期即丢。
 
+## 安装
+
+<!-- src: none -->
+
+插件由 DSH 的插件管理器安装，不需要常驻进程或本地服务。当前分发形态是 `pnpm pack` 产出的 tarball，等真实飞书冒烟通过后再改为 npm 公共包：
+
+```sh
+pnpm pack   # 产出 feishu-aide-<version>.tgz，prepack 会先重新构建 dist
+```
+
+在 DSH 的插件页或 `dsh plugin` 命令里安装时，把 spec 指向这个 tarball 的绝对路径（`file:<路径>` 或直接给路径）。插件管理器的 `installBundle` 也接受 registry 包名与 git 地址，但本仓库目前只验证 tarball 这一条。
+
+装好后在插件配置里填自建应用的 App ID / App Secret，再用 `feishu_auth_login` 完成一次设备流授权（在浏览器里确认），之后 `feishu_auth_status` 应显示已授权。
+
+安装时如果 pnpm 提示允许构建脚本，来源是 `@larksuiteoapi/node-sdk` 的传递依赖 `protobufjs`；它的 postinstall 只是提示，拒绝不影响使用。
+
 ## 当前已落地
 
 <!-- src: src/core/path-safety.ts, src/index.ts -->
@@ -38,6 +54,7 @@ Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、
 pnpm install
 pnpm check   # secret scan + 文档块映射 + typecheck + unit + policy tests
 pnpm build
+pnpm pack:check   # 校验 pnpm pack 的产物内容
 ```
 
 查某次改动会影响哪些文档块（改 `src/**` 前先跑）：

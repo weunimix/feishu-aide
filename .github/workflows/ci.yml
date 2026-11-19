@@ -3,9 +3,9 @@ name: CI
 # 供应链：action 固定到完整 commit SHA（行尾注释版本），升级由 Dependabot
 # 每周提 PR；不要写回 @vN，标签可以被上游移动。
 
-# P1: offline checks only. Feishu API tests, a fake server, retrieval golden
-# tests, and the MCP smoke test are added in P2/P3 when their code exists;
-# adding empty steps now would only create fake green checks.
+# P2/P3: offline checks only. 真实飞书验证需要人在浏览器里完成设备流授权，
+# 不进入 CI；其余（fake server 集成、插件装配 smoke、打包校验）都已离线覆盖。
+# 不加空 step：没有断言就绿是假绿。
 on:
   push:
     branches: [main]
@@ -60,6 +60,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build
+
+      # 打包校验：tarball 必须带 dist 入口与 cordis.patch.yml、不得含 src/test，
+      # 且 dist 里不能出现 src 已删除文件的陈旧产物。防的失败模式是「删了源码、
+      # 忘了清 dist，旧 .js 跟着发布物进用户 node_modules」——本机构建不清 dist
+      # 时不会暴露，只有真打过旧包的人才会带着幽灵文件发版。
+      - name: Pack check
+        run: pnpm pack:check
 
       # Only build output and redacted logs are uploaded. Never upload the
       # local document cache: it can contain tenant content.

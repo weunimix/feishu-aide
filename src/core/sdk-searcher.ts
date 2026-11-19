@@ -2,6 +2,7 @@ import * as lark from "@larksuiteoapi/node-sdk";
 import type { Domain } from "./device-flow.js";
 import { unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { silentLogger } from "./sdk-logger.js";
 import { toHits } from "./search.js";
 import type { DocSearcher, SearchQuery, SearchResult } from "./search.js";
 
@@ -45,7 +46,7 @@ export function createSdkSearcher(options: SearcherOptions): DocSearcher {
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.fatal,
+    logger: silentLogger,
   });
 
   return {

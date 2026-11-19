@@ -4,6 +4,7 @@ import type { FeishuBlock } from "./markdown.js";
 import type { Domain } from "./device-flow.js";
 import { asRecord, unwrap } from "./feishu-json.js";
 import { withRetry } from "./retry.js";
+import { silentLogger } from "./sdk-logger.js";
 
 /**
  * SDK 适配层。整个插件只有这里直接依赖 `@larksuiteoapi/node-sdk`，
@@ -26,7 +27,7 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.fatal, // SDK 的错误日志会带上请求/响应体，正文不能进日志
+    logger: silentLogger, // SDK 的错误日志会带上请求/响应体，正文不能进日志
   });
 
   return {
