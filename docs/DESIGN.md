@@ -59,15 +59,17 @@ MVP 范围：
 Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown，写工具只接受块级操作。
 
 ## 4. 维护性
-<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-messages.ts, src/core/sdk-writer.ts, src/core/feishu-json.ts, src/core/search.ts, src/core/messages.ts, src/core/markdown.ts, src/plugin.ts -->
+<!-- src: src/core/sdk-reader.ts, src/core/sdk-searcher.ts, src/core/sdk-messages.ts, src/core/sdk-writer.ts, src/core/feishu-json.ts, src/core/retry.ts, src/core/search.ts, src/core/messages.ts, src/core/markdown.ts, src/plugin.ts -->
 
 依赖面刻意收窄到平台两个 API：`ctx.tools.register`（工具注册）与壳层传入的配置（`resolveConfig`）。不依赖客户端包，不依赖插件管理器内部结构，不依赖 `ctx.agents` 的内部字段。
 
 外部依赖有两个：飞书官方 SDK（`@larksuiteoapi/node-sdk`）与配置 schema 库（`@deepseek-ai/schemastery`，DSH 插件生态通用）。不引入 MCP SDK、不引入文档转换库；块到 Markdown 的渲染由本项目实现，因为它是视图，需要完全可控的降级行为。
 
+SDK 自身的日志关闭（`LoggerLevel.fatal`）：它记录错误时会带上请求与响应体，正文不能进日志；错误由适配层上抛，最终只经过工具结果。
+
 | 失效模式 | 后果 | 对策 |
 |---|---|---|
-| 网络超时、限流 | 工具挂起或失败 | 请求超时与上限固定写死；429 按 `Retry-After` 退避 |
+| 网络超时、限流 | 工具挂起或失败 | 429、503 与业务码 99991400 按 `Retry-After` 退避，缺失时指数退避并封顶 10s，最多 3 次；其余 4xx 不重试 |
 | 分页漏页或死循环 | 内容不完整 | 游标单测覆盖空页、重复游标、边界页大小 |
 | 未知块类型 | 渲染失败 | 降级为纯文本，不抛错 |
 | token 过期 | 调用失败 | 刷新用比较并交换，避免并发覆盖；失败时返回可操作的错误 |

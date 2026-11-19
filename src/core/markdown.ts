@@ -1,8 +1,9 @@
 /**
  * 飞书 docx 块 → Markdown。
  *
- * 只做"能读"这一档：认得的块渲染成语义等价的形式，认不得的块降级成一行注释，
- * 不丢块、不猜结构。渲染必须确定性，测试直接拿块 JSON 断言输出。
+ * 只做"能读"这一档：认得的块渲染成语义等价的形式，认不得的块把它的内联文本
+ * 降级成一行纯文本（确实没有文本才跳过），不丢块、不猜结构。渲染必须确定性，
+ * 测试直接拿块 JSON 断言输出。
  */
 
 export type FeishuBlock = {
@@ -85,6 +86,21 @@ export function inlineText(elements: TextElement[] | undefined): string {
     .join("");
 }
 
+/**
+ * 未知块的兜底：在块对象里找一个带 `elements` 的字段并取其文本。
+ * 只认数组形态的 `elements`，避免把 `style` 之类的对象误当正文。
+ */
+function fallbackText(block: FeishuBlock): string {
+  for (const [key, value] of Object.entries(block)) {
+    if (key === "style" || typeof value !== "object" || value === null) continue;
+    const elements = (value as { elements?: unknown }).elements;
+    if (!Array.isArray(elements)) continue;
+    const text = inlineText(elements as TextElement[]);
+    if (text !== "") return text;
+  }
+  return "";
+}
+
 function renderedLines(block: FeishuBlock): string[] {
   const type = block.block_type ?? 0;
   const content = contentOf(block);
@@ -106,7 +122,10 @@ function renderedLines(block: FeishuBlock): string[] {
   if (type === 15) return text ? [`> ${text}`] : [];
   if (type === 17) return text ? [`- [${done ? "x" : " "}] ${text}`] : [];
   if (type === 22) return ["---"];
-  return [];
+  // 未知块：飞书新增块类型时内容通常仍是同一套 text_element 结构，
+  // 降级成一行纯文本比整块丢掉更接近用户预期。
+  const fallback = fallbackText(block);
+  return fallback ? [fallback] : [];
 }
 
 /** 把一篇文档的块列表渲染成 Markdown。块顺序即文档顺序。 */

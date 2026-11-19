@@ -5,7 +5,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { AuthManager } from "./core/auth.js";
 import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
 import { FileDocumentCache } from "./core/cache.js";
-import { OFFICIAL_ENDPOINTS, type DeviceFlowEnv } from "./core/device-flow.js";
+import { OFFICIAL_ENDPOINTS } from "./core/device-flow.js";
 import { extractDocRef, readDocumentCached } from "./core/docx.js";
 import { listChatMessages } from "./core/messages.js";
 import { createSdkMessageReader } from "./core/sdk-messages.js";
@@ -45,14 +45,17 @@ export function apply(ctx: Context, input?: unknown): void {
   const cacheTtlMs = Math.max(0, config.read.cacheTtlSeconds) * 1000;
   void documentCache.prune(cacheTtlMs).catch(() => undefined);
 
-  const env = (): DeviceFlowEnv => ({
-    ...requireAppCredentials(config),
-    endpoints: OFFICIAL_ENDPOINTS[config.auth.domain],
-  });
-
-  // 懒构造：没配应用凭据时只有真正调用工具才报错，不影响宿主启动。
+  // 懒构造：查授权状态不需要应用凭据，真正联网的工具在调用前各自校验。
   let manager: AuthManager | null = null;
-  const auth = (): AuthManager => (manager ??= new AuthManager(env(), store));
+  const auth = (): AuthManager =>
+    (manager ??= new AuthManager(
+      {
+        appId: config.auth.appId,
+        appSecret: config.auth.appSecret,
+        endpoints: OFFICIAL_ENDPOINTS[config.auth.domain],
+      },
+      store
+    ));
 
   const reader = () =>
     createSdkReader({
@@ -143,6 +146,7 @@ export function apply(ctx: Context, input?: unknown): void {
         ],
       },
       async execute(args) {
+        requireAppCredentials(config);
         const current = auth();
         const challenge = await current.startLogin(args.scope);
         void current

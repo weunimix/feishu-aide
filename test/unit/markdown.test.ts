@@ -52,6 +52,23 @@ test("行内元素保留文档引用与公式", () => {
   assert.equal(inlineText(elements), "见 [设计稿]$E=mc^2$");
 });
 
+test("未知块把内联文本降级成纯文本", () => {
+  const block: FeishuBlock = {
+    block_id: "x",
+    block_type: 99,
+    callout: { elements: [{ text_run: { content: "提示内容" } }] },
+  };
+  assert.equal(renderMarkdown([block]), "提示内容");
+});
+
+test("未知块没有文本时不产出空行", () => {
+  const blocks: FeishuBlock[] = [
+    { block_id: "a", block_type: 99, style: { align: 1 } },
+    textBlock("保留"),
+  ];
+  assert.equal(renderMarkdown(blocks), "保留");
+});
+
 test("块摘要只带定位与纯文本", () => {
   const summary = summarizeBlocks([textBlock("甲"), textBlock("乙")], 1);
   assert.deepEqual(summary, [{ block_id: "blk", block_type: 2, text: "甲" }]);

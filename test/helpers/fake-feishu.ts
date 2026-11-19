@@ -41,10 +41,38 @@ export interface FakeFixtures {
 
 export type RouteHandler = (request: RecordedRequest, server: FakeFeishuServer) => unknown;
 
+/** 让 overrides 能返回带状态码与响应头的响应，用于注入限流、故障等场景。 */
+export interface FakeRawResponse {
+  readonly __fakeResponse: true;
+  status: number;
+  headers: Record<string, string>;
+  body: unknown;
+}
+
+export function rawResponse(
+  body: unknown,
+  init: { status?: number; headers?: Record<string, string> } = {}
+): FakeRawResponse {
+  return { __fakeResponse: true, status: init.status ?? 200, headers: init.headers ?? {}, body };
+}
+
+function isRawResponse(value: unknown): value is FakeRawResponse {
+  return typeof value === "object" && value !== null && (value as { __fakeResponse?: unknown }).__fakeResponse === true;
+}
+
 function json(res: http.ServerResponse, payload: unknown, status = 200): void {
   const body = JSON.stringify(payload);
   res.writeHead(status, { "content-type": "application/json" });
   res.end(body);
+}
+
+function send(res: http.ServerResponse, payload: unknown): void {
+  if (!isRawResponse(payload)) {
+    json(res, payload);
+    return;
+  }
+  res.writeHead(payload.status, { "content-type": "application/json", ...payload.headers });
+  res.end(typeof payload.body === "string" ? payload.body : JSON.stringify(payload.body));
 }
 
 export class FakeFeishuServer {
@@ -109,14 +137,15 @@ export class FakeFeishuServer {
     this.requests.push(request);
 
     const override = this.overrides.get(`${request.method} ${request.path}`);
-    if (override !== undefined) {
-      json(res, override(request, this));
-      return;
-    }
-
     try {
+      // override 返回 undefined 表示「这次不拦截」，继续走内置路由。
+      const overridden = override?.(request, this);
+      if (overridden !== undefined) {
+        send(res, overridden);
+        return;
+      }
       const payload = this.#route(request);
-      json(res, payload ?? { code: 404, msg: "not found" });
+      send(res, payload ?? { code: 404, msg: "not found" });
     } catch (error) {
       json(res, { code: 500, msg: error instanceof Error ? error.message : String(error) }, 500);
     }

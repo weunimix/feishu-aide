@@ -1,5 +1,6 @@
 import * as lark from "@larksuiteoapi/node-sdk";
 import { asRecord, unwrap } from "./feishu-json.js";
+import { withRetry } from "./retry.js";
 import type { Domain } from "./device-flow.js";
 
 /**
@@ -52,35 +53,41 @@ export function createSdkWriter(options: WriterOptions): DocxWriteApi {
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.warn,
+    loggerLevel: lark.LoggerLevel.fatal, // 同 sdk-reader：写请求的 data 就是正文，不能被 SDK 打进日志
   });
 
   const requestOptions = async () => lark.withUserAccessToken(await options.userAccessToken());
 
   return {
     async patchTextBlock(input: PatchTextInput): Promise<void> {
-      const response = await client.docx.documentBlock.patch(
-        {
-          path: { document_id: input.documentId, block_id: input.blockId },
-          params: { client_token: input.clientToken },
-          data: { update_text_elements: { elements: textElements(input.text) } },
-        },
-        await requestOptions()
+      const httpOptions = await requestOptions();
+      const response = await withRetry(() =>
+        client.docx.documentBlock.patch(
+          {
+            path: { document_id: input.documentId, block_id: input.blockId },
+            params: { client_token: input.clientToken },
+            data: { update_text_elements: { elements: textElements(input.text) } },
+          },
+          httpOptions
+        )
       );
       unwrap(response);
     },
 
     async createTextChildren(input: CreateChildrenInput): Promise<string[]> {
-      const response = await client.docx.documentBlockChildren.create(
-        {
-          path: { document_id: input.documentId, block_id: input.parentBlockId },
-          params: { client_token: input.clientToken },
-          data: {
-            children: input.texts.map(textBlock),
-            ...(input.index === undefined ? {} : { index: input.index }),
+      const httpOptions = await requestOptions();
+      const response = await withRetry(() =>
+        client.docx.documentBlockChildren.create(
+          {
+            path: { document_id: input.documentId, block_id: input.parentBlockId },
+            params: { client_token: input.clientToken },
+            data: {
+              children: input.texts.map(textBlock),
+              ...(input.index === undefined ? {} : { index: input.index }),
+            },
           },
-        },
-        await requestOptions()
+          httpOptions
+        )
       );
       const data = unwrap(response);
       const children = Array.isArray(data.children) ? data.children : [];
@@ -92,10 +99,8 @@ export function createSdkWriter(options: WriterOptions): DocxWriteApi {
     },
 
     async createDocument(title: string): Promise<{ documentId: string }> {
-      const response = await client.docx.document.create(
-        { data: { title } },
-        await requestOptions()
-      );
+      const httpOptions = await requestOptions();
+      const response = await withRetry(() => client.docx.document.create({ data: { title } }, httpOptions));
       const data = unwrap(response);
       const document = asRecord(data.document);
       const documentId = document.document_id;

@@ -3,6 +3,7 @@ import type { BlockPage, DocReader, DocumentMeta, WikiNode } from "./docx.js";
 import type { FeishuBlock } from "./markdown.js";
 import type { Domain } from "./device-flow.js";
 import { asRecord, unwrap } from "./feishu-json.js";
+import { withRetry } from "./retry.js";
 
 /**
  * SDK 适配层。整个插件只有这里直接依赖 `@larksuiteoapi/node-sdk`，
@@ -25,14 +26,16 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     appId: options.appId,
     appSecret: options.appSecret,
     domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
-    loggerLevel: lark.LoggerLevel.warn,
+    loggerLevel: lark.LoggerLevel.fatal, // SDK 的错误日志会带上请求/响应体，正文不能进日志
   });
 
   return {
     async getDocument(documentId: string): Promise<DocumentMeta> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await client.docx.document.get({ path: { document_id: documentId } }, lark.withUserAccessToken(token))
+        await withRetry(() =>
+          client.docx.document.get({ path: { document_id: documentId } }, lark.withUserAccessToken(token))
+        )
       );
       const document = asRecord(data.document);
       return {
@@ -44,12 +47,14 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     async listBlocks(documentId: string, pageToken?: string): Promise<BlockPage> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await client.docx.documentBlock.list(
-          {
-            path: { document_id: documentId },
-            params: { page_size: PAGE_SIZE, ...(pageToken === undefined ? {} : { page_token: pageToken }) },
-          },
-          lark.withUserAccessToken(token)
+        await withRetry(() =>
+          client.docx.documentBlock.list(
+            {
+              path: { document_id: documentId },
+              params: { page_size: PAGE_SIZE, ...(pageToken === undefined ? {} : { page_token: pageToken }) },
+            },
+            lark.withUserAccessToken(token)
+          )
         )
       );
       const items = Array.isArray(data.items) ? (data.items as FeishuBlock[]) : [];
@@ -61,9 +66,8 @@ export function createSdkReader(options: ReaderOptions): DocReader {
     async resolveWikiToken(wikiToken: string): Promise<WikiNode> {
       const token = await options.userAccessToken();
       const data = unwrap(
-        await client.wiki.space.getNode(
-          { params: { token: wikiToken, obj_type: "wiki" } },
-          lark.withUserAccessToken(token)
+        await withRetry(() =>
+          client.wiki.space.getNode({ params: { token: wikiToken, obj_type: "wiki" } }, lark.withUserAccessToken(token))
         )
       );
       const node = asRecord(data.node);
