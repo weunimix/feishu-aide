@@ -52,6 +52,8 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 
 真实飞书验证不放在 CI：设备流授权需要人在浏览器里点确认，无法无人值守复现。这部分由维护者在本地手动验证，结果写进 PR 的验证证据。
 
+依赖布局固定为 hoisted（`.npmrc`）：Windows 上没有创建符号链接的权限时 pnpm 会退回 junction，而 Node 不把 junction 当作符号链接、不会 realpath，SDK 的传递依赖（axios → form-data）从 junction 路径向上查找时会失败。hoisted 布局让本地与 CI 走同一条解析路径。
+
 ## 5. 测试矩阵
 <!-- src: none -->
 
@@ -68,13 +70,13 @@ PR CI 顺序按"失败最快、依赖最少"排列：
 
 - **P0（done）**：仓库骨架。
 - **P1（done）**：CI 骨架、secret scan、策略单测、路径安全、文档块映射。
-- **P2**：fake Feishu server + contract/integration；覆盖读、写、冲突、幂等。
+- **P2（进行中）**：fake Feishu server + integration；读、搜索、消息与块级写回的请求往返已覆盖，写冲突与幂等仍在单测层。
 - **P3**：插件装配 smoke；按 npm 发布形态决定 pack 检查。
 
 ## 7. 验收
 <!-- src: none -->
 
-- [ ] 没有凭证时也能跑完整的读、写、冲突、幂等链路（fake server）。
+- [x] 没有凭证时也能跑读、搜索、消息与块级写回的请求往返（fake server）。
 - [ ] 同一写请求执行两次，文档只变化一次。
 - [ ] `base_revision` 不匹配的写被拒绝，并返回当前版本。
 - [ ] 未知块类型渲染为纯文本，不抛错。

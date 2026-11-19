@@ -2,7 +2,7 @@
 
 DSH 插件：让用户在会话里读取飞书文档、wiki 与消息，并让 agent 对内容做润色或修改后写回飞书。交互全部通过对话完成，不提供独立的客户端界面。
 
-Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、消息读取与块级写回已实现，含离线单测；按需缓存与 fake server 集成测试尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
+Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、消息读取与块级写回已实现，含离线单测与 fake server 集成测试；按需缓存尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
 
 ## 能力与进度
 
