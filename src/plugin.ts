@@ -7,7 +7,9 @@ import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
 import { OFFICIAL_ENDPOINTS, type DeviceFlowEnv } from "./core/device-flow.js";
 import { extractDocRef, readDocument } from "./core/docx.js";
 import { createSdkReader } from "./core/sdk-reader.js";
+import { createSdkSearcher } from "./core/sdk-searcher.js";
 import { createSdkWriter } from "./core/sdk-writer.js";
+import { searchDocuments } from "./core/search.js";
 import { FileTokenStore } from "./core/token-store.js";
 import { resolveDocumentId } from "./core/wiki.js";
 import { runWrite } from "./core/write.js";
@@ -53,6 +55,13 @@ export function apply(ctx: Context, input?: unknown): void {
 
   const writer = () =>
     createSdkWriter({
+      ...requireAppCredentials(config),
+      domain: config.auth.domain,
+      userAccessToken: () => auth().getAccessToken(),
+    });
+
+  const searcher = () =>
+    createSdkSearcher({
       ...requireAppCredentials(config),
       domain: config.auth.domain,
       userAccessToken: () => auth().getAccessToken(),
@@ -178,6 +187,75 @@ export function apply(ctx: Context, input?: unknown): void {
         return readDocument(sdkReader, documentId, {
           maxBlocks: args.maxBlocks ?? config.read.maxBlocks,
           maxBytes: config.read.maxBytes,
+        });
+      },
+    })
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "feishu_doc_search",
+      description:
+        "按关键词搜索当前用户可见的飞书云文档与知识库，返回标题、链接、类型与摘要。拿到链接后可以直接交给 feishu_doc_read。",
+      parameters: {
+        query: { type: "string", required: true, description: "搜索词" },
+        limit: { type: "number", description: "返回条数，1 到 50，缺省 10" },
+        onlyTitle: { type: "boolean", description: "只按标题匹配" },
+        docTypes: {
+          type: "array",
+          items: { type: "string" },
+          description: "限定类型，例如 DOCX、WIKI、SHEET；缺省不限",
+        },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            hits: {
+              type: "array",
+              required: true,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  title: { type: "string", required: true },
+                  url: { type: "string" },
+                  token: { type: "string" },
+                  type: { type: "string" },
+                  summary: { type: "string" },
+                  updateTime: { type: "number" },
+                  owner: { type: "string" },
+                },
+              },
+            },
+            total: { type: "number" },
+            hasMore: { type: "boolean", required: true },
+            pageToken: { type: "string" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.hits.length === 0) {
+            return [{ type: "text", text: "没有匹配的文档" }];
+          }
+          const lines = value.hits.map((hit, index) => {
+            const meta = [hit.type, hit.owner].filter((item): item is string => typeof item === "string" && item.length > 0);
+            const head = `${index + 1}. ${hit.title}${meta.length > 0 ? `（${meta.join(" · ")}）` : ""}`;
+            const tail = [hit.url ?? (hit.token === undefined ? "" : `token: ${hit.token}`), hit.summary ?? ""]
+              .filter((item) => item.length > 0)
+              .join("\n   ");
+            return tail.length > 0 ? `${head}\n   ${tail}` : head;
+          });
+          if (value.hasMore) lines.push("还有更多结果，可以收窄关键词或调大 limit");
+          return [{ type: "text", text: lines.join("\n") }];
+        },
+      },
+      async execute(args) {
+        return searchDocuments(searcher(), {
+          query: args.query,
+          ...(args.limit === undefined ? {} : { limit: args.limit }),
+          ...(args.onlyTitle === undefined ? {} : { onlyTitle: args.onlyTitle }),
+          ...(args.docTypes === undefined ? {} : { docTypes: args.docTypes }),
         });
       },
     })

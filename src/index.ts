@@ -13,3 +13,5 @@ export { planWrite, summarizePlan, WriteError } from "./core/write-plan.js";
 export type { PlannedOp, WriteOp } from "./core/write-plan.js";
 export { runWrite, WriteConflict } from "./core/write.js";
 export type { WriteOutcome, WritePolicy, WriteRequest } from "./core/write.js";
+export { searchDocuments, normalizeQuery, stripHighlight, toHits, SearchError } from "./core/search.js";
+export type { DocSearcher, SearchHit, SearchQuery, SearchResult } from "./core/search.js";

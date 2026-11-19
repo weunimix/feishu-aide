@@ -75,7 +75,9 @@
           "src/core/feishu-json.ts",
           "src/core/markdown.ts",
           "src/core/sdk-reader.ts",
+          "src/core/sdk-searcher.ts",
           "src/core/sdk-writer.ts",
+          "src/core/search.ts",
           "src/plugin.ts"
         ]
       },
