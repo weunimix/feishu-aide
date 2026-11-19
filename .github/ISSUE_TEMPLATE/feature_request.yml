@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        先确认它是否已在 [docs/CI-REUSE-PLAN.md](https://github.com/mmw-devs/feishu-aide/blob/main/docs/CI-REUSE-PLAN.md) 里；
-        如果属于已排期阶段，请直接引用对应的 P2/P3/P4 条目。
+        先确认它是否已在 [docs/CI-REUSE-PLAN.md](https://github.com/weunimix/feishu-aide/blob/main/docs/CI-REUSE-PLAN.md) 里；
+        如果属于已排期阶段，请直接引用对应的 P2/P3 条目。
 
   - type: textarea
     id: problem
@@ -30,11 +30,11 @@ body:
     attributes:
       label: 影响范围
       options:
-        - core
-        - sync
+        - auth
+        - doc
+        - chat
         - search
-        - mcp
-        - cli
+        - write
         - ci
         - docs
     validations:

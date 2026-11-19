@@ -9,7 +9,7 @@ function mergedDaysAgo(days) {
   return {
     number: 42,
     merged_at: new Date(NOW - days * DAY).toISOString(),
-    html_url: "https://github.com/mmw-devs/feishu-aide/pull/42",
+    html_url: "https://github.com/weunimix/feishu-aide/pull/42",
   };
 }
 

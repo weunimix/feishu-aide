@@ -210,7 +210,7 @@ export class AuthManager {
     return {
       stage: "register",
       userCode: challenge.userCode,
-      verificationUri: challenge.verificationUri,
+      verificationUri: challenge.verificationUriComplete ?? challenge.verificationUri,
       expiresIn: challenge.expiresIn,
     };
   }
@@ -219,7 +219,7 @@ export class AuthManager {
     return {
       stage: "authorize",
       userCode: challenge.userCode,
-      verificationUri: challenge.verificationUri,
+      verificationUri: challenge.verificationUriComplete ?? challenge.verificationUri,
       expiresIn: challenge.expiresIn,
     };
   }

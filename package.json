@@ -69,5 +69,9 @@
       "esbuild",
       "protobufjs"
     ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weunimix/feishu-aide.git"
   }
 }

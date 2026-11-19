@@ -23,14 +23,14 @@ Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）
 核对：
 
 ```sh
-gh api repos/mmw-devs/feishu-aide \
+gh api repos/weunimix/feishu-aide \
   --jq '{default_branch,allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge,has_issues,has_wiki}'
 ```
 
 一次性对齐（确认无误后再执行）：
 
 ```sh
-gh api -X PATCH repos/mmw-devs/feishu-aide \
+gh api -X PATCH repos/weunimix/feishu-aide \
   -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false \
   -F allow_auto_merge=true -F delete_branch_on_merge=true
 ```
@@ -60,8 +60,8 @@ gh api -X PATCH repos/mmw-devs/feishu-aide \
 核对：
 
 ```sh
-gh api repos/mmw-devs/feishu-aide/rulesets
-gh api repos/mmw-devs/feishu-aide/rulesets/<id>
+gh api repos/weunimix/feishu-aide/rulesets
+gh api repos/weunimix/feishu-aide/rulesets/<id>
 ```
 
 现状（2026-11-14）：规则集 `main-protection`（id `27264463`），`enforcement: active`，`bypass_actors` 为空（管理员也不绕过）；`strict_required_status_checks_policy: true`；`allowed_merge_methods: ["squash"]`。注意 GitHub 默认开启了 `require_extra_approval_for_unattributed_changes`：将来的机器人/未归属提交若被判定为 unattributed，合入需要额外 approve，届时要么调整该参数，要么保证提交带有归属。
@@ -96,8 +96,8 @@ gh api repos/mmw-devs/feishu-aide/rulesets/<id>
 核对：
 
 ```sh
-gh api repos/mmw-devs/feishu-aide/actions/permissions
-gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
+gh api repos/weunimix/feishu-aide/actions/permissions
+gh api repos/weunimix/feishu-aide/actions/permissions/workflow
 ```
 
 现状（2026-11-15）：`allowed_actions: selected`，`github_owned_allowed: true`，`verified_allowed: true`，`patterns_allowed: ["pnpm/action-setup@*"]`；`default_workflow_permissions: read`，`can_approve_pull_request_reviews: false`；artifact/log retention 14 天（上限 90）；`sha_pinning_required: true`——workflow 里的 action 已固定到完整 SHA，升级由 [.github/dependabot.yml](../.github/dependabot.yml) 每周提 PR。
@@ -131,7 +131,7 @@ gh api repos/mmw-devs/feishu-aide/actions/permissions/workflow
 创建（bash；已存在的标签会报错，`|| true` 忽略）：
 
 ```sh
-repo=mmw-devs/feishu-aide
+repo=weunimix/feishu-aide
 for spec in \
   "bug|d73a4a|可复现的错误" \
   "enhancement|a2eeef|新能力或流程改进" \
@@ -160,9 +160,9 @@ done
 P1 已完成；P2/P3/P4 建 milestone，PR 用 `Closes #` 或 milestone 挂靠，进度才可查询。
 
 ```sh
-gh api repos/mmw-devs/feishu-aide/milestones -f title="P2 fake Feishu + contract/integration"
-gh api repos/mmw-devs/feishu-aide/milestones -f title="P3 index + retrieval + smoke"
-gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts + live canary"
+gh api repos/weunimix/feishu-aide/milestones -f title="P2 fake Feishu + contract/integration"
+gh api repos/weunimix/feishu-aide/milestones -f title="P3 index + retrieval + smoke"
+gh api repos/weunimix/feishu-aide/milestones -f title="P4 docs SSOT + contracts + live canary"
 ```
 
 现状（2026-11-14）：上述三个 milestone 已创建；P1 没有对应 milestone（已完成，不需要追溯）。
@@ -189,3 +189,4 @@ gh api repos/mmw-devs/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 | 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `PR title` 必需 check，回读确认 contexts 为 `verify (ubuntu-latest)`、`verify (windows-latest)`、`PR title`；`sha_pinning_required` 已于同日开启。 |
 | 2026-11-15 | weunimix / agent（gh api） | 新增 `scripts/check-repo-settings.mjs` 与 `docs/repo-settings.baseline.json`，本地 `pnpm repo:audit` 比对与基线一致。同日撤掉 `repo-audit.yml` 定时任务与 PAT 要求：单人仓库改为改设置后手动跑，理由见 §8。 |
 | 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `Branch name` 必需 check（机器人分支与 fork 放行）；新增 `pr-size.yml` 只打 `size/*` 标签，不设必需 check。回读确认 contexts 为四项。 |
+| 2026-11-20 | weunimix / agent（gh api） | 仓库从组织 `mmw-devs/feishu-aide` 转移到个人账号 `weunimix/feishu-aide`；两个 ruleset（`27264463` / `27264465`）随仓库保留、id 不变，旧地址由 GitHub 重定向。本文档与脚本里的 owner 同步为 `weunimix`。 |

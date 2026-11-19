@@ -166,7 +166,7 @@ async function main() {
     return;
   }
 
-  const owner = process.env.AUDIT_OWNER || "mmw-devs";
+  const owner = process.env.AUDIT_OWNER || "weunimix";
   const repo = process.env.AUDIT_REPO || "feishu-aide";
   const live = buildAudit(await collectLive(token, owner, repo));
 

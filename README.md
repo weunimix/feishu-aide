@@ -80,4 +80,4 @@ pnpm docs:impact src/core/path-safety.ts
 
 <!-- src: none -->
 
-MIT © 2026 mmw-devs。见 [LICENSE](LICENSE)。
+MIT © 2026 weunimix。见 [LICENSE](LICENSE)。
