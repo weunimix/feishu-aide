@@ -93,3 +93,46 @@ test("刷新失败即清空授权，要求重新登录", async () => {
   await assert.rejects(auth.getAccessToken());
   assert.equal(await store.load(), null);
 });
+
+test("登出清空本地令牌", async () => {
+  const store = new MemoryTokenStore();
+  await store.save({ accessToken: "at", expiresAt: Date.now() + 3_600_000 });
+  const auth = new AuthManager(envWith(() => jsonResponse({})), store);
+
+  await auth.logout();
+  assert.equal(await store.load(), null);
+  assert.deepEqual(await auth.status(), { authorized: false });
+});
+
+test("刷新期间登出：在途结果不再写回令牌", async () => {
+  const store = new MemoryTokenStore();
+  await store.save({ accessToken: "old", refreshToken: "rt", expiresAt: Date.now() - 1000 });
+
+  let entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const env: DeviceFlowEnv = {
+    appId: "cli_test",
+    appSecret: "secret",
+    endpoints: { accounts: "https://accounts.test", open: "https://open.test" },
+    fetchImpl: (async () => {
+      entered();
+      await gate;
+      return jsonResponse({ access_token: "new", refresh_token: "rt2", expires_in: 3600 });
+    }) as typeof fetch,
+  };
+  const auth = new AuthManager(env, store);
+
+  const pending = auth.getAccessToken();
+  await started;
+  await auth.logout();
+  release();
+  await pending.catch(() => undefined);
+
+  assert.equal(await store.load(), null);
+});

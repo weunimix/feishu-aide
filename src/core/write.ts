@@ -12,6 +12,8 @@ export interface WritePolicy {
   enabled: boolean;
   confirm: "diff" | "always" | "never";
   requireRevisionMatch: boolean;
+  /** 允许的操作种类；缺省不限制。 */
+  operations?: readonly string[];
 }
 
 export interface WriteRequest {
@@ -49,7 +51,8 @@ export type WriteConflictCode =
   | "missing_document"
   | "need_base_revision"
   | "revision_mismatch"
-  | "need_confirmation";
+  | "need_confirmation"
+  | "op_not_allowed";
 
 export class WriteConflict extends Error {
   constructor(
@@ -144,6 +147,17 @@ export async function runWrite(deps: WriteDeps, request: WriteRequest): Promise<
 
   const planned = planWrite(snapshot, request.ops);
   const plan = summarizePlan(planned);
+
+  if (deps.policy.operations) {
+    const allowed = new Set(deps.policy.operations);
+    const blocked = planned.find((item) => !allowed.has(item.kind));
+    if (blocked) {
+      throw new WriteConflict(
+        "op_not_allowed",
+        `写回不允许 ${blocked.kind}：当前配置只允许 ${[...allowed].join("、") || "（空）"}`
+      );
+    }
+  }
 
   if (deps.policy.requireRevisionMatch && request.documentId) {
     if (!request.baseRevision) {

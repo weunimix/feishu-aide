@@ -1,5 +1,9 @@
 import Schema from "@deepseek-ai/schemastery";
 
+/** 允许的写操作种类；配置里可以收窄。 */
+export const WRITE_OPERATIONS = ["replace_text", "insert_text", "create_document"] as const;
+export type WriteOperation = (typeof WRITE_OPERATIONS)[number];
+
 /**
  * 插件配置。除了 `auth.appId` / `auth.appSecret`（必须由用户提供自建应用凭据）之外，
  * 其余项都有能直接跑起来的默认值。
@@ -8,7 +12,12 @@ export interface FeishuAideConfig {
   auth: { domain: "feishu" | "lark"; appId: string; appSecret: string };
   storage: { dir: string };
   read: { maxBlocks: number; maxBytes: number; cacheTtlSeconds: number };
-  write: { enabled: boolean; confirm: "diff" | "always" | "never"; requireRevisionMatch: boolean };
+  write: {
+    enabled: boolean;
+    confirm: "diff" | "always" | "never";
+    requireRevisionMatch: boolean;
+    operations: WriteOperation[];
+  };
 }
 
 /** 交给 DSH 渲染配置表单用的 schema；默认值与 `FeishuAideConfig` 必须保持一致。 */
@@ -52,6 +61,11 @@ export const Config: Schemastery = Schema.object({
     requireRevisionMatch: Schema.boolean()
       .default(true)
       .description("写回前校验版本，失败即拒绝"),
+    operations: Schema.array(
+      Schema.union(["replace_text", "insert_text", "create_document"] as const)
+    )
+      .default([...WRITE_OPERATIONS])
+      .description("允许的写操作种类，收窄后其余操作会被拒绝"),
   }),
 });
 

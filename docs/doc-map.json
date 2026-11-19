@@ -62,6 +62,7 @@
         "heading": "3. 数据域与事实源",
         "src": [
           "src/core/auth.ts",
+          "src/core/cache.ts",
           "src/core/device-flow.ts",
           "src/core/docx.ts",
           "src/core/token-store.ts",

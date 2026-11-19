@@ -22,6 +22,8 @@ export interface AuthStatus {
 
 export class AuthManager {
   private refreshing: Promise<TokenSet> | null = null;
+  /** 每次登出 / 重新登录都自增，用来让在途刷新不回写已经作废的身份。 */
+  private generation = 0;
 
   constructor(
     private readonly env: DeviceFlowEnv,
@@ -49,8 +51,11 @@ export class AuthManager {
       throw new Error("授权已过期且没有 refresh token，请重新调用 feishu_auth_login");
     }
 
+    const generation = this.generation;
     this.refreshing ??= refreshAccessToken(this.env, token.refreshToken)
       .then(async (next) => {
+        // 刷新期间用户登出或换了账号：这份 token 不再写回。
+        if (generation !== this.generation) return next;
         await this.store.save(next);
         return next;
       })
@@ -73,11 +78,15 @@ export class AuthManager {
   /** 授权完成后落盘；调用方负责在后台执行，不要阻塞工具返回。 */
   async completeLogin(challenge: DeviceChallenge): Promise<TokenSet> {
     const token = await waitForDeviceFlow(this.env, challenge);
+    this.generation += 1;
+    this.refreshing = null;
     await this.store.save(token);
     return token;
   }
 
   async logout(): Promise<void> {
+    this.generation += 1;
+    this.refreshing = null;
     await this.store.clear();
   }
 }

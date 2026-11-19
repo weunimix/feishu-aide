@@ -37,21 +37,21 @@ MVP 范围：
 另一个不可回避的事实：沙箱约束的是 agent 的 shell 执行路径，插件工具在宿主进程内执行，不经过该路径。两条路径的边界由平台划分，插件不去改变它，也不把业务逻辑分散到两侧。
 
 ## 3. 数据域与事实源
-<!-- src: src/core/docx.ts, src/core/wiki.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/token-store.ts -->
+<!-- src: src/core/docx.ts, src/core/wiki.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/token-store.ts, src/core/cache.ts -->
 
 | 数据域 | 事实源 | 插件的角色 | 规则 |
 |---|---|---|---|
-| 文档内容与块 | 飞书，按 `revision_id` 版本化 | 缓存与视图 | 缓存键是 `(document_id, revision_id)`，不能用文档 id 单独做键 |
+| 文档内容与块 | 飞书，按 `revision_id` 版本化 | 缓存与视图 | 缓存键是 `(document_id, revision_id, 读取预算)`，不能用文档 id 单独做键 |
 | 消息 | 飞书时间轴，按 `message_id` | 缓存 | 按时间区间拉取，不维护"最新消息"游标 |
 | wiki 树 | 飞书 wiki | 透传 | 不落地持久树 |
 | 凭据 | 飞书 OAuth，根是 refresh token | 持有并刷新 | 只存一份，在插件存储目录的 `tokens.json`；不进配置 |
 | 配置 | 宿主传入的插件配置 | 只读 | 装配时解析一次快照，不在多处解析 |
 | 工具集 | 插件源码 | 唯一声明处 | 不另维护工具清单文档 |
-| 缓存 | 无 | 可丢弃 | 任何缓存丢失只影响性能 |
+| 缓存 | 插件存储目录下的文件 | 可丢弃 | 按 TTL 过期，条目数上限 200、超限淘汰最旧；启动、写缓存与登出触发清扫并回收残留临时文件；不做全量镜像 |
 
 四条不变量：
 
-1. **单一写者**：只有插件的存储模块写磁盘（`tokens.json`）；工具之间不直接互写状态。
+1. **单一写者**：只有插件的存储模块写磁盘（`tokens.json` 与缓存目录）；工具之间不直接互写状态。
 2. **派生可丢**：缓存、Markdown 渲染、搜索片段都可以整块删除后重建。
 3. **引用闭合**：跨步骤引用一律写成 `(document_id, revision_id, block_id)`；写回必须以块为单位，不以文本偏移为单位。
 4. **身份唯一**：文档读写只用 user token，禁止静默回落到 tenant token。身份漂移比报错更难排查。
@@ -86,12 +86,13 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 |---|---|---|---|
 | `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope | 读 | 已实现 |
 | `feishu_auth_login` | 发起设备流授权，返回验证地址与用户码 | 写（本地凭据） | 已实现 |
+| `feishu_auth_logout` | 撤销授权，清空本地令牌与文档缓存 | 写（本地凭据） | 已实现 |
 | `feishu_doc_read` | 读 docx 文档与 wiki 节点，返回块、版本与 Markdown | 读 | 已实现 |
 | `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |
 | `feishu_doc_search` | 按关键词搜索文档与 wiki | 读 | 已实现 |
 | `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 已实现 |
 
-读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。
+读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`，命中缓存时另带 `fromCache`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。
 
 授权类工具只返回状态，不返回 token 值。
 
@@ -103,6 +104,7 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 - **身份**：只用 user token。写回的作者必须是用户本人。
 - **版本**：`baseRevision` 与当前版本不一致时拒绝执行，返回当前版本与重新读取的建议，不静默覆盖。
 - **粒度**：以块为单位。当前实现支持替换文本块、在指定父块下插入文本块、新建文档；删除块与整篇文本覆盖都不支持。
+- **范围**：允许的操作种类由配置 `write.operations` 收窄；未列出的操作直接拒绝（`op_not_allowed`），不会降级成别的操作。
 - **幂等**：每次写操作带按内容计算的客户端幂等键；重试同一请求不会重复插入块。
 - **确认**：由配置决定。`diff` 先返回变更计划等确认；`always` 每次写都要确认；`never` 直接执行，仅靠版本校验兜底。
 - **失败**：部分成功必须如实报告哪些操作已写入，不谎报整体成功。
@@ -123,10 +125,10 @@ feishuAide:
   read:
     maxBlocks: 500          # 单次返回的块数上限
     maxBytes: 262144        # 单次返回的字节上限
-    cacheTtlSeconds: 600    # 非写回路径的缓存有效期
+    cacheTtlSeconds: 600    # 非写回路径的缓存有效期；0 表示不使用缓存
   write:
     enabled: true
-    operations: [patch, insert, create]   # 允许的写操作种类
+    operations: [replace_text, insert_text, create_document]   # 允许的写操作种类
     confirm: diff           # diff | always | never
     requireRevisionMatch: true
 ```

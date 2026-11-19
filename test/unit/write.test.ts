@@ -159,3 +159,16 @@ test("只新建文档时不读快照", async () => {
   assert.equal(listed, 0);
   assert.equal(parts.calls[0]?.kind, "document");
 });
+
+test("操作种类被配置收窄时拒绝未允许的操作", async () => {
+  const parts = setup();
+  await assert.rejects(
+    runWrite(deps(parts, { confirm: "never", operations: ["replace_text"] }), {
+      documentId: "doc1",
+      baseRevision: "7",
+      ops: [{ op: "insert_text", texts: ["新段落"] }],
+    }),
+    (error: unknown) => error instanceof WriteConflict && error.code === "op_not_allowed"
+  );
+  assert.equal(parts.calls.length, 0);
+});

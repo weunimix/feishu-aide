@@ -2,17 +2,17 @@
 
 DSH 插件：让用户在会话里读取飞书文档、wiki 与消息，并让 agent 对内容做润色或修改后写回飞书。交互全部通过对话完成，不提供独立的客户端界面。
 
-Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、消息读取与块级写回已实现，含离线单测与 fake server 集成测试；按需缓存尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
+Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取、文档搜索、消息读取与块级写回已实现，含离线单测与 fake server 集成测试；读文档按版本缓存。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
 
 ## 能力与进度
 
 <!-- src: none -->
-- 已实现：设备流 OAuth 授权（`feishu_auth_status` / `feishu_auth_login`），token 在本地保存并按需刷新；
+- 已实现：设备流 OAuth 授权（`feishu_auth_status` / `feishu_auth_login` / `feishu_auth_logout`），token 在本地保存并按需刷新；
 - 已实现：读取 docx 文档与 wiki 节点（wiki 链接解析到背后的文档），返回块、版本与 Markdown（`feishu_doc_read`）；
 - 已实现：按关键词搜索文档与知识库，返回标题、链接、类型与摘要（`feishu_doc_search`）；
 - 已实现：按会话与时间区间读取群聊、单聊的历史消息，返回发送人、时间与可读文本（`feishu_chat_messages`）；
 - 已实现：替换文本块、插入文本块、新建文档，写前校验版本，操作带幂等键（`feishu_doc_write`）；
-- 未实现：按需缓存。
+- 已实现：读文档按 `(文档, 版本, 读取预算)` 缓存块内容，版本变化自动失效，TTL 到期即丢。
 
 ## 当前已落地
 

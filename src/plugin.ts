@@ -4,8 +4,9 @@ import type { Context } from "@deepseek-ai/cordis";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { AuthManager } from "./core/auth.js";
 import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
+import { FileDocumentCache } from "./core/cache.js";
 import { OFFICIAL_ENDPOINTS, type DeviceFlowEnv } from "./core/device-flow.js";
-import { extractDocRef, readDocument } from "./core/docx.js";
+import { extractDocRef, readDocumentCached } from "./core/docx.js";
 import { listChatMessages } from "./core/messages.js";
 import { createSdkMessageReader } from "./core/sdk-messages.js";
 import { createSdkReader } from "./core/sdk-reader.js";
@@ -37,7 +38,12 @@ function requireAppCredentials(config: FeishuAideConfig): { appId: string; appSe
 
 export function apply(ctx: Context, input?: unknown): void {
   const config = resolveConfig(input);
-  const store = new FileTokenStore(resolveStorageDir(config));
+  const storageDir = resolveStorageDir(config);
+  const store = new FileTokenStore(storageDir);
+  const documentCache = new FileDocumentCache(path.join(storageDir, "cache"));
+  // 启动时先扫一遍：过期条目没有事件可依赖，只能靠这种必然发生的时机兜底。
+  const cacheTtlMs = Math.max(0, config.read.cacheTtlSeconds) * 1000;
+  void documentCache.prune(cacheTtlMs).catch(() => undefined);
 
   const env = (): DeviceFlowEnv => ({
     ...requireAppCredentials(config),
@@ -139,16 +145,43 @@ export function apply(ctx: Context, input?: unknown): void {
       async execute(args) {
         const current = auth();
         const challenge = await current.startLogin(args.scope);
-        void current.completeLogin(challenge).catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : String(error);
-          ctx.logger?.warn?.(`飞书设备授权未完成：${message}`);
-        });
+        void current
+          .completeLogin(challenge)
+          .then(() => documentCache.clear())
+          .catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            ctx.logger?.warn?.(`飞书设备授权未完成：${message}`);
+          });
         return {
           status: "pending",
           userCode: challenge.userCode,
           verificationUri: challenge.verificationUri,
           expiresIn: challenge.expiresIn,
         };
+      },
+    })
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "feishu_auth_logout",
+      description: "撤销飞书授权：清掉本地保存的令牌与文档缓存，下次使用需要重新授权。",
+      parameters: {},
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            authorized: { type: "boolean", required: true },
+          },
+        },
+        render: () => [{ type: "text", text: "已撤销授权，并清空本地令牌与文档缓存" }],
+      },
+      async execute() {
+        if (manager) await manager.logout();
+        else await store.clear();
+        await documentCache.clear();
+        return { authorized: false };
       },
     })
   );
@@ -184,19 +217,27 @@ export function apply(ctx: Context, input?: unknown): void {
               },
             },
             truncated: { type: "boolean", required: true },
+            fromCache: { type: "boolean", description: "本次是否直接命中缓存" },
           },
         },
-        render: (_args, value) => [{ type: "text", text: value.markdown }],
+        render: (_args, value) => [
+          { type: "text", text: value.fromCache ? `（缓存命中，版本 ${value.revisionId}）\n${value.markdown}` : value.markdown },
+        ],
       },
       async execute(args) {
         const ref = extractDocRef(args.ref);
         const sdkReader = reader();
         const documentId = await resolveDocumentId(sdkReader, ref);
 
-        return readDocument(sdkReader, documentId, {
-          maxBlocks: args.maxBlocks ?? config.read.maxBlocks,
-          maxBytes: config.read.maxBytes,
-        });
+        return readDocumentCached(
+          sdkReader,
+          documentId,
+          {
+            maxBlocks: args.maxBlocks ?? config.read.maxBlocks,
+            maxBytes: config.read.maxBytes,
+          },
+          { cache: documentCache, ttlSeconds: config.read.cacheTtlSeconds }
+        );
       },
     })
   );
