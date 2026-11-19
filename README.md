@@ -1,17 +1,16 @@
 # feishu-aide
 
-为 [mmw-tools](https://github.com/mmw-devs/mmw-tools) / DeepSeek Harness agent 提供飞书文档与知识库访问的工具项目：联网读取飞书文档、wiki 知识库内容，增量缓存到本地，并提供检索/读取能力，帮助 agent 定位用户需要的信息。
+DSH 插件：让用户在会话里读取飞书文档、wiki 与消息，并让 agent 对内容做润色或修改后写回飞书。交互全部通过对话完成，不提供独立的客户端界面。
 
-Status: P1 (2026-11-15) — 仓库骨架、离线 CI、secret scan、分支清理、路径安全单测、文档块映射已落地；飞书客户端、同步和检索尚未实现。方案见 [CI 与仓库工程设计复用方案](docs/CI-REUSE-PLAN.md)。
+Status: P1 (2026-11-20) — 仓库骨架、离线 CI、secret scan、分支清理、路径安全单测、文档块映射已落地；插件本体（认证、读写工具）尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
 
 ## 目标能力（尚未实现）
 
 <!-- src: none -->
-
-- 连接飞书开放平台，读取 wiki 空间、节点与 docx 文档内容；
-- 增量同步到本地缓存，处理分页、限流、删除、权限与路径安全；
-- 本地索引与检索（先 SQLite FTS5，语义检索后置）；
-- 以 core library + stdio MCP server 提供给 agent 调用，CLI 后加。
+- 设备流 OAuth 授权，token 在本地保存并按需刷新；
+- 读取 docx 文档、wiki 节点与消息记录，返回块、版本与 Markdown；
+- 按块修改内容、插入块、新建文档，写前校验版本，写操作幂等；
+- 按需缓存，不做本地全量同步与索引。
 
 ## 当前已落地
 
@@ -49,7 +48,8 @@ pnpm docs:impact src/core/path-safety.ts
 
 <!-- src: none -->
 
-- [CI 与仓库工程设计复用方案](docs/CI-REUSE-PLAN.md) — 哪些 CI / 工程约束可复用、飞书场景新增哪些测试、按什么顺序落地。
+- [设计](docs/DESIGN.md) — 产品形态、数据事实源、工具面、写回语义与配置。
+- [CI 与工程约束](docs/CI-REUSE-PLAN.md) — 哪些工程约束可复用、飞书场景测什么、按什么顺序落地。
 - [仓库设置基线](docs/repo-settings.md) — 分支规则、合并方式、Actions allowlist 等不在 git 里的设置，以及核对命令。
 - 文档块的 `src` 标注与 `doc-map.json` 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

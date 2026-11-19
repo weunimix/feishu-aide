@@ -3,23 +3,23 @@
   "docs": {
     "docs/CI-REUSE-PLAN.md": [
       {
-        "anchor": "1-定位与三个直接后果",
-        "heading": "1. 定位与三个直接后果",
+        "anchor": "1-原则",
+        "heading": "1. 原则",
         "src": []
       },
       {
-        "anchor": "2-已定决策20261114",
-        "heading": "2. 已定决策（2026-11-14）",
+        "anchor": "2-直接复用的工程约束",
+        "heading": "2. 直接复用的工程约束",
         "src": []
       },
       {
-        "anchor": "3-逐条作用与价值",
-        "heading": "3. 逐条作用与价值",
+        "anchor": "3-飞书场景新增",
+        "heading": "3. 飞书场景新增",
         "src": []
       },
       {
-        "anchor": "4-推荐的-ci-分层",
-        "heading": "4. 推荐的 CI 分层",
+        "anchor": "4-ci-分层",
+        "heading": "4. CI 分层",
         "src": []
       },
       {
@@ -33,13 +33,76 @@
         "src": []
       },
       {
-        "anchor": "7-验收清单",
-        "heading": "7. 验收清单",
+        "anchor": "7-验收",
+        "heading": "7. 验收",
         "src": []
       },
       {
         "anchor": "8-决策记录",
         "heading": "8. 决策记录",
+        "src": []
+      }
+    ],
+    "docs/DESIGN.md": [
+      {
+        "anchor": "1-定位与-mvp-范围",
+        "heading": "1. 定位与 MVP 范围",
+        "src": []
+      },
+      {
+        "anchor": "2-形态选择",
+        "heading": "2. 形态选择",
+        "src": [
+          "src/index.ts",
+          "src/plugin.ts"
+        ]
+      },
+      {
+        "anchor": "3-数据域与事实源",
+        "heading": "3. 数据域与事实源",
+        "src": [
+          "src/core/auth.ts",
+          "src/core/device-flow.ts",
+          "src/core/docx.ts",
+          "src/core/token-store.ts"
+        ]
+      },
+      {
+        "anchor": "4-维护性",
+        "heading": "4. 维护性",
+        "src": [
+          "src/core/markdown.ts",
+          "src/core/sdk-reader.ts",
+          "src/plugin.ts"
+        ]
+      },
+      {
+        "anchor": "5-工具面",
+        "heading": "5. 工具面",
+        "src": [
+          "src/plugin.ts"
+        ]
+      },
+      {
+        "anchor": "6-写回语义",
+        "heading": "6. 写回语义",
+        "src": []
+      },
+      {
+        "anchor": "7-配置",
+        "heading": "7. 配置",
+        "src": [
+          "src/core/config.ts"
+        ]
+      },
+      {
+        "anchor": "8-验收",
+        "heading": "8. 验收",
+        "src": []
+      },
+      {
+        "anchor": "9-决策记录",
+        "heading": "9. 决策记录",
         "src": []
       }
     ],

@@ -1,0 +1,17 @@
+- insert:
+    - id: feishu-aide
+      name: feishu-aide
+      config:
+        auth:
+          domain: feishu
+          appId: ''
+          appSecret: ''
+        storage:
+          dir: ''
+        read:
+          maxBlocks: 500
+          maxBytes: 262144
+        write:
+          enabled: true
+          confirm: diff
+          requireRevisionMatch: true

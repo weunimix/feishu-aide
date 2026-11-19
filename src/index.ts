@@ -1,1 +1,10 @@
-export { MAX_SEGMENT_LENGTH, safeJoin, sanitizeSegment } from "./core/path-safety.js";
+export { apply, inject, name } from "./plugin.js";
+export { Config, resolveConfig } from "./core/config.js";
+export type { FeishuAideConfig } from "./core/config.js";
+export { AuthManager } from "./core/auth.js";
+export { FileTokenStore, MemoryTokenStore } from "./core/token-store.js";
+export type { TokenStore } from "./core/token-store.js";
+export { extractDocRef, readDocument, DocReadError } from "./core/docx.js";
+export type { DocReader, DocumentSnapshot } from "./core/docx.js";
+export { renderMarkdown, summarizeBlocks } from "./core/markdown.js";
+export type { FeishuBlock } from "./core/markdown.js";

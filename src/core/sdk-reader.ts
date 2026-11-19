@@ -1,0 +1,76 @@
+import * as lark from "@larksuiteoapi/node-sdk";
+import type { BlockPage, DocReader, DocumentMeta } from "./docx.js";
+import type { FeishuBlock } from "./markdown.js";
+import type { Domain } from "./device-flow.js";
+
+/**
+ * SDK 适配层。整个插件只有这里直接依赖 `@larksuiteoapi/node-sdk`，
+ * 其余模块都面向 `DocReader` 这类小接口，因此可以离线测试。
+ */
+
+export interface ReaderOptions {
+  appId: string;
+  appSecret: string;
+  domain: Domain;
+  userAccessToken: () => Promise<string>;
+  /** 测试注入用：把 SDK 指向本地 fake server。 */
+  domainOverride?: string;
+}
+
+type Json = Record<string, unknown>;
+
+function asRecord(value: unknown): Json {
+  return value && typeof value === "object" ? (value as Json) : {};
+}
+
+function unwrap(response: unknown): Json {
+  const body = asRecord(response);
+  const data = asRecord(body.data);
+  if (typeof body.code === "number" && body.code !== 0) {
+    const message = typeof body.msg === "string" ? body.msg : "飞书接口返回错误";
+    throw new Error(`飞书接口错误（code=${body.code}）：${message}`);
+  }
+  return Object.keys(data).length > 0 ? data : body;
+}
+
+const PAGE_SIZE = 500;
+
+export function createSdkReader(options: ReaderOptions): DocReader {
+  const client = new lark.Client({
+    appId: options.appId,
+    appSecret: options.appSecret,
+    domain: options.domainOverride ?? (options.domain === "lark" ? lark.Domain.Lark : lark.Domain.Feishu),
+    loggerLevel: lark.LoggerLevel.warn,
+  });
+
+  return {
+    async getDocument(documentId: string): Promise<DocumentMeta> {
+      const token = await options.userAccessToken();
+      const data = unwrap(
+        await client.docx.document.get({ path: { document_id: documentId } }, lark.withUserAccessToken(token))
+      );
+      const document = asRecord(data.document);
+      return {
+        title: typeof document.title === "string" ? document.title : "",
+        revisionId: String(document.revision_id ?? ""),
+      };
+    },
+
+    async listBlocks(documentId: string, pageToken?: string): Promise<BlockPage> {
+      const token = await options.userAccessToken();
+      const data = unwrap(
+        await client.docx.documentBlock.list(
+          {
+            path: { document_id: documentId },
+            params: { page_size: PAGE_SIZE, ...(pageToken === undefined ? {} : { page_token: pageToken }) },
+          },
+          lark.withUserAccessToken(token)
+        )
+      );
+      const items = Array.isArray(data.items) ? (data.items as FeishuBlock[]) : [];
+      const page: BlockPage = { items, hasMore: data.has_more === true };
+      if (typeof data.page_token === "string") page.pageToken = data.page_token;
+      return page;
+    },
+  };
+}
