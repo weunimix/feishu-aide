@@ -20,6 +20,15 @@ export interface BlockPage {
 export interface DocReader {
   getDocument(documentId: string): Promise<DocumentMeta>;
   listBlocks(documentId: string, pageToken?: string): Promise<BlockPage>;
+  /** 可选：把 wiki 节点 token 换成它背后的对象；不支持时由调用方给出提示。 */
+  resolveWikiToken?: (wikiToken: string) => Promise<WikiNode>;
+}
+
+/** wiki 节点背后的真实对象。 */
+export interface WikiNode {
+  objToken: string;
+  objType: string;
+  title?: string;
 }
 
 export interface ReadLimits {

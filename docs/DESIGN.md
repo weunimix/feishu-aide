@@ -9,7 +9,7 @@ feishu-aide 是一个 DSH 插件：让用户在 **DSH 会话里**读飞书文档
 
 MVP 范围：
 
-- 读：docx 文档、wiki 节点、消息记录；
+- 读：docx 文档与 wiki 节点（wiki 链接解析到背后的文档）；
 - 写：已有文档的块级修改、插入与新建文档；
 - 认证：设备流 OAuth，用户身份授权，token 由插件保存并刷新；
 - 缓存：按需拉取，按版本缓存，不做本地全量同步与索引。
@@ -37,7 +37,7 @@ MVP 范围：
 另一个不可回避的事实：沙箱约束的是 agent 的 shell 执行路径，插件工具在宿主进程内执行，不经过该路径。两条路径的边界由平台划分，插件不去改变它，也不把业务逻辑分散到两侧。
 
 ## 3. 数据域与事实源
-<!-- src: src/core/docx.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/token-store.ts -->
+<!-- src: src/core/docx.ts, src/core/wiki.ts, src/core/auth.ts, src/core/device-flow.ts, src/core/token-store.ts -->
 
 | 数据域 | 事实源 | 插件的角色 | 规则 |
 |---|---|---|---|

@@ -2,15 +2,15 @@
 
 DSH 插件：让用户在会话里读取飞书文档、wiki 与消息，并让 agent 对内容做润色或修改后写回飞书。交互全部通过对话完成，不提供独立的客户端界面。
 
-Status: P2 (2026-11-20) — 设备流授权、docx 读取与块级写回已实现，含离线单测；wiki 节点解析、文档与消息的搜索读取、fake server 集成测试尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
+Status: P2 (2026-11-20) — 设备流授权、docx/wiki 读取与块级写回已实现，含离线单测；文档与消息的搜索读取、fake server 集成测试尚未实现。形态与范围见 [设计](docs/DESIGN.md)，CI 与工程约束见 [CI 与工程约束](docs/CI-REUSE-PLAN.md)。
 
 ## 能力与进度
 
 <!-- src: none -->
 - 已实现：设备流 OAuth 授权（`feishu_auth_status` / `feishu_auth_login`），token 在本地保存并按需刷新；
-- 已实现：读取 docx 文档，返回块、版本与 Markdown（`feishu_doc_read`）；
+- 已实现：读取 docx 文档与 wiki 节点（wiki 链接解析到背后的文档），返回块、版本与 Markdown（`feishu_doc_read`）；
 - 已实现：替换文本块、插入文本块、新建文档，写前校验版本，操作带幂等键（`feishu_doc_write`）；
-- 未实现：wiki 节点解析、文档搜索、消息读取，以及按需缓存。
+- 未实现：文档搜索、消息读取，以及按需缓存。
 
 ## 当前已落地
 

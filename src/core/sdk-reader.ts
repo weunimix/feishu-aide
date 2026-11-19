@@ -1,5 +1,5 @@
 import * as lark from "@larksuiteoapi/node-sdk";
-import type { BlockPage, DocReader, DocumentMeta } from "./docx.js";
+import type { BlockPage, DocReader, DocumentMeta, WikiNode } from "./docx.js";
 import type { FeishuBlock } from "./markdown.js";
 import type { Domain } from "./device-flow.js";
 import { asRecord, unwrap } from "./feishu-json.js";
@@ -56,6 +56,25 @@ export function createSdkReader(options: ReaderOptions): DocReader {
       const page: BlockPage = { items, hasMore: data.has_more === true };
       if (typeof data.page_token === "string") page.pageToken = data.page_token;
       return page;
+    },
+
+    async resolveWikiToken(wikiToken: string): Promise<WikiNode> {
+      const token = await options.userAccessToken();
+      const data = unwrap(
+        await client.wiki.space.getNode(
+          { params: { token: wikiToken, obj_type: "wiki" } },
+          lark.withUserAccessToken(token)
+        )
+      );
+      const node = asRecord(data.node);
+      const objToken = node.obj_token;
+      const objType = node.obj_type;
+      if (typeof objToken !== "string" || typeof objType !== "string") {
+        throw new Error("wiki 节点响应里缺少对象信息");
+      }
+      const result: WikiNode = { objToken, objType };
+      if (typeof node.title === "string") result.title = node.title;
+      return result;
     },
   };
 }

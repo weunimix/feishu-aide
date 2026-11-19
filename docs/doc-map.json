@@ -64,7 +64,8 @@
           "src/core/auth.ts",
           "src/core/device-flow.ts",
           "src/core/docx.ts",
-          "src/core/token-store.ts"
+          "src/core/token-store.ts",
+          "src/core/wiki.ts"
         ]
       },
       {

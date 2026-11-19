@@ -5,10 +5,11 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { AuthManager } from "./core/auth.js";
 import { resolveConfig, type FeishuAideConfig } from "./core/config.js";
 import { OFFICIAL_ENDPOINTS, type DeviceFlowEnv } from "./core/device-flow.js";
-import { DocReadError, extractDocRef, readDocument } from "./core/docx.js";
+import { extractDocRef, readDocument } from "./core/docx.js";
 import { createSdkReader } from "./core/sdk-reader.js";
 import { createSdkWriter } from "./core/sdk-writer.js";
 import { FileTokenStore } from "./core/token-store.js";
+import { resolveDocumentId } from "./core/wiki.js";
 import { runWrite } from "./core/write.js";
 
 export const name = "feishu-aide";
@@ -137,7 +138,7 @@ export function apply(ctx: Context, input?: unknown): void {
   ctx.tools.register(
     defineTool({
       name: "feishu_doc_read",
-      description: "读取一篇飞书文档（docx 链接或 document_id），返回标题、版本号、块列表与渲染后的 Markdown。",
+      description: "读取一篇飞书文档（docx 或 wiki 链接、document_id），返回标题、版本号、块列表与渲染后的 Markdown。",
       parameters: {
         ref: { type: "string", required: true, description: "文档 URL 或 token" },
         maxBlocks: { type: "number", description: "本次最多读取的块数，缺省取插件配置" },
@@ -171,15 +172,10 @@ export function apply(ctx: Context, input?: unknown): void {
       },
       async execute(args) {
         const ref = extractDocRef(args.ref);
-        if (ref.kind === "wiki") {
-          throw new DocReadError(
-            "unsupported_ref",
-            "wiki 链接需要先解析成文档 token：当前版本暂不支持自动解析，请直接给出 /docx/ 链接或 document_id"
-          );
-        }
-
         const sdkReader = reader();
-        return readDocument(sdkReader, ref.token, {
+        const documentId = await resolveDocumentId(sdkReader, ref);
+
+        return readDocument(sdkReader, documentId, {
           maxBlocks: args.maxBlocks ?? config.read.maxBlocks,
           maxBytes: config.read.maxBytes,
         });
@@ -256,22 +252,18 @@ export function apply(ctx: Context, input?: unknown): void {
       },
       async execute(args) {
         const ref = args.ref ? extractDocRef(args.ref) : null;
-        if (ref?.kind === "wiki") {
-          throw new DocReadError(
-            "unsupported_ref",
-            "wiki 链接需要先解析成文档 token：当前版本暂不支持自动解析，请直接给出 /docx/ 链接或 document_id"
-          );
-        }
+        const sdkReader = reader();
+        const documentId = ref ? await resolveDocumentId(sdkReader, ref) : null;
 
         return runWrite(
           {
-            reader: reader(),
+            reader: sdkReader,
             writer: writer(),
             policy: config.write,
             limits: { maxBlocks: config.read.maxBlocks, maxBytes: config.read.maxBytes },
           },
           {
-            documentId: ref ? ref.token : null,
+            documentId,
             ...(args.baseRevision === undefined ? {} : { baseRevision: args.baseRevision }),
             ops: args.ops,
             ...(args.apply === undefined ? {} : { apply: args.apply }),
