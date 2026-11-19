@@ -76,6 +76,27 @@ test("已删除消息与缺 id 的条目被跳过", () => {
   assert.equal(message.sentAt, 1760000000000);
 });
 
+test("发送人姓名优先取会话内的显示名，脱敏的 sender_name 只作兜底", () => {
+  const messages = toMessages([
+    {
+      message_id: "om_a",
+      msg_type: "text",
+      create_time: "1760000000000",
+      body: { content: '{"text":"一"}' },
+      sender: { id: "ou_1", sender_name: "用户000000", sender_i18n_names: { zh_cn: "张三", en_us: "Zhang San" } },
+    },
+    {
+      message_id: "om_b",
+      msg_type: "text",
+      create_time: "1760000001000",
+      body: { content: '{"text":"二"}' },
+      sender: { id: "ou_2", sender_name: "weunimix" },
+    },
+  ]);
+  assert.equal(messages[0]?.senderName, "张三");
+  assert.equal(messages[1]?.senderName, "weunimix");
+});
+
 test("入口把查询交给适配层并归一化结果", async () => {
   const reader = fakeReader({
     items: [{ message_id: "om_9", msg_type: "text", create_time: "1760000000000", body: { content: '{"text":"结论"}' } }],

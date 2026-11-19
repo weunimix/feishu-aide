@@ -36,7 +36,7 @@ async function withServer(run: (server: FakeFeishuServer) => Promise<void>): Pro
         msg_type: "text",
         create_time: "1760000000000",
         body: { content: '{"text":"结论：按计划推进"}' },
-        sender: { id: "ou_1", sender_name: "张三" },
+        sender: { id: "ou_1", sender_name: "用户000000", sender_i18n_names: { zh_cn: "张三" } },
       },
     ];
     await run(server);

@@ -176,6 +176,27 @@ export function extractText(msgType: string, rawContent: unknown): string {
   }
 }
 
+/**
+ * 发送人显示名。
+ *
+ * 按会话列消息时，飞书对没有通讯录权限的发送人只把 `sender_name` 脱敏成「用户000000」，
+ * 而同一对象里的 `sender_i18n_names` 仍带真实显示名，所以优先取后者。
+ */
+function senderDisplayName(sender: Record<string, unknown>): string | undefined {
+  const i18n = sender.sender_i18n_names;
+  if (typeof i18n === "object" && i18n !== null) {
+    const names = i18n as Record<string, unknown>;
+    for (const key of ["zh_cn", "en_us"]) {
+      const value = names[key];
+      if (typeof value === "string" && value.length > 0) return value;
+    }
+    for (const value of Object.values(names)) {
+      if (typeof value === "string" && value.length > 0) return value;
+    }
+  }
+  return typeof sender.sender_name === "string" && sender.sender_name.length > 0 ? sender.sender_name : undefined;
+}
+
 export function toMessages(items: readonly unknown[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   for (const item of items) {
@@ -197,7 +218,8 @@ export function toMessages(items: readonly unknown[]): ChatMessage[] {
       text: extractText(msgType, body.content),
       sentAt: Number.isFinite(createdAt) ? createdAt : 0,
     };
-    if (typeof sender.sender_name === "string" && sender.sender_name.length > 0) message.senderName = sender.sender_name;
+    const displayName = senderDisplayName(sender);
+    if (displayName !== undefined) message.senderName = displayName;
     if (typeof sender.id === "string" && sender.id.length > 0) message.senderId = sender.id;
     messages.push(message);
   }
