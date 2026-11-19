@@ -24,3 +24,11 @@ export { searchDocuments, normalizeQuery, stripHighlight, toHits, SearchError } 
 export type { DocSearcher, SearchHit, SearchQuery, SearchResult } from "./core/search.js";
 export { listChatMessages, normalizeMessageQuery, extractText, toMessages, MessageError } from "./core/messages.js";
 export type { ChatMessage, MessagePage, MessageQuery, MessageReader } from "./core/messages.js";
+export {
+  searchContacts,
+  normalizeContactQuery,
+  stripHighlight as stripContactHighlight,
+  toContacts,
+  ContactError,
+} from "./core/contacts.js";
+export type { ContactHit, ContactPage, ContactQuery, ContactSearcher, RawContactPage } from "./core/contacts.js";

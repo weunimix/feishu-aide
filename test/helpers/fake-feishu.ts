@@ -37,6 +37,7 @@ export interface FakeFixtures {
   wikiNodes: Record<string, FakeWikiNode>;
   searchUnits: Record<string, unknown[]>;
   messageItems: Record<string, unknown[]>;
+  contactItems: Record<string, unknown[]>;
 }
 
 export type RouteHandler = (request: RecordedRequest, server: FakeFeishuServer) => unknown;
@@ -77,7 +78,13 @@ function send(res: http.ServerResponse, payload: unknown): void {
 
 export class FakeFeishuServer {
   readonly requests: RecordedRequest[] = [];
-  readonly fixtures: FakeFixtures = { documents: {}, wikiNodes: {}, searchUnits: {}, messageItems: {} };
+  readonly fixtures: FakeFixtures = {
+    documents: {},
+    wikiNodes: {},
+    searchUnits: {},
+    messageItems: {},
+    contactItems: {},
+  };
   readonly overrides = new Map<string, RouteHandler>();
   /** 幂等键到首次响应的映射：同一 client_token 再来只回放，不重复落盘。 */
   readonly patchedResponses = new Map<string, unknown>();
@@ -196,6 +203,13 @@ export class FakeFeishuServer {
     if (request.path === "/open-apis/im/v1/messages") {
       const chatId = request.query.get("container_id") ?? "";
       const items = this.fixtures.messageItems[chatId] ?? [];
+      return { code: 0, data: { items, has_more: false } };
+    }
+
+    if (request.path === "/open-apis/contact/v3/users/search" && request.method === "POST") {
+      const body = recordOf(request.body);
+      const query = typeof body.query === "string" ? body.query : "";
+      const items = this.fixtures.contactItems[query] ?? [];
       return { code: 0, data: { items, has_more: false } };
     }
 

@@ -28,6 +28,8 @@ tmp/
 # Build and type-check output
 dist/
 *.tsbuildinfo
+# pnpm pack 产出的分发包
+*.tgz
 
 # Local document cache and SQLite indexes
 .feishu-aide/

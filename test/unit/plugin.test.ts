@@ -37,7 +37,7 @@ function toolNamed(tools: CapturedTool[], name: string): CapturedTool {
   return tool;
 }
 
-test("装配后注册全部七个工具", () => {
+test("装配后注册全部八个工具", () => {
   const { ctx, tools } = fakeContext();
   const storage = { dir: tempStorage() };
   apply(ctx, { storage });
@@ -49,6 +49,7 @@ test("装配后注册全部七个工具", () => {
       "feishu_auth_logout",
       "feishu_auth_status",
       "feishu_chat_messages",
+      "feishu_contact_search",
       "feishu_doc_read",
       "feishu_doc_search",
       "feishu_doc_write",

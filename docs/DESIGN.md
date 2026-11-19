@@ -82,19 +82,20 @@ SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正�
 测试策略：业务测试全部离线。飞书端点用注入 base URL 的 fake server 或录制后脱敏的 fixture 回放；纯函数（参数校验、块渲染、写回计划）直接单测。真实租户只用于单独的手动或定时验证，不进入 PR。
 
 ## 5. 工具面
-<!-- src: src/plugin.ts -->
+<!-- src: src/plugin.ts, src/core/contacts.ts, src/core/sdk-contacts.ts -->
 
 工具是插件唯一的产品面。命名用飞书自身的词汇，不造新词。
 
 | 工具 | 用途 | 读/写 | 状态 |
 |---|---|---|---|
 | `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope，以及还差哪一步确认 | 读 | 已实现 |
-| `feishu_auth_login` | 推进一步授权：先返回创建应用的确认地址，再返回授权地址与用户码。默认申请文档与 wiki 读写、消息只读、离线刷新；`search:docs:read` 需显式传入 | 写（本地凭据） | 已实现 |
+| `feishu_auth_login` | 推进一步授权：先返回创建应用的确认地址，再返回授权地址与用户码。默认申请文档与 wiki 读写、消息只读、联系人搜索、离线刷新；`search:docs:read` 需显式传入 | 写（本地凭据） | 已实现 |
 | `feishu_auth_logout` | 撤销授权，清空本地令牌与文档缓存（保留应用凭据） | 写（本地凭据） | 已实现 |
 | `feishu_doc_read` | 读 docx 文档与 wiki 节点，返回块、版本与 Markdown | 读 | 已实现 |
 | `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |
 | `feishu_doc_search` | 按关键词搜索文档与 wiki；需要 `search:docs:read`，缺权限时返回明确提示 | 读 | 已实现 |
 | `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 已实现 |
+| `feishu_contact_search` | 按名字搜索联系人，返回 open_id、部门与单聊 `chat_id`，可直接交给 `feishu_chat_messages` | 读 | 已实现 |
 
 读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`，命中缓存时另带 `fromCache`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。新建文档时返回新文档 `documentId`（顶层与对应的结果项里都有），可直接拿去读取或继续写。
 

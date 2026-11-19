@@ -9,6 +9,8 @@ import { OFFICIAL_ENDPOINTS } from "./core/device-flow.js";
 import { FileAppCredentialStore } from "./core/app-credentials.js";
 import { extractDocRef, readDocumentCached } from "./core/docx.js";
 import { listChatMessages } from "./core/messages.js";
+import { searchContacts } from "./core/contacts.js";
+import { createSdkContactSearcher } from "./core/sdk-contacts.js";
 import { createSdkMessageReader } from "./core/sdk-messages.js";
 import { createSdkReader } from "./core/sdk-reader.js";
 import { createSdkSearcher } from "./core/sdk-searcher.js";
@@ -85,6 +87,12 @@ export function apply(ctx: Context, input?: unknown): void {
       userAccessToken: () => auth().getAccessToken(),
     });
 
+  const contacts = async () =>
+    createSdkContactSearcher({
+      domain: config.auth.domain,
+      userAccessToken: () => auth().getAccessToken(),
+    });
+
   ctx.tools.register(
     defineTool({
       name: "feishu_auth_status",
@@ -136,7 +144,7 @@ export function apply(ctx: Context, input?: unknown): void {
         scope: {
           type: "string",
           description:
-            "可选，空格分隔的权限范围；不传则申请文档与 wiki 读写、消息只读、离线刷新（docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly offline_access）。search:docs:read 需要企业管理员审批，需要搜索时显式传入",
+            "可选，空格分隔的权限范围；不传则申请文档与 wiki 读写、消息只读、联系人搜索、离线刷新（docx:document docx:document:readonly wiki:wiki wiki:wiki:readonly im:message:readonly contact:user:search offline_access）。search:docs:read 需要企业管理员审批，需要搜索时显式传入",
         },
       },
       output: {
@@ -392,6 +400,63 @@ export function apply(ctx: Context, input?: unknown): void {
           chatId: args.chatId,
           ...(args.startTime === undefined ? {} : { startTime: args.startTime }),
           ...(args.endTime === undefined ? {} : { endTime: args.endTime }),
+          ...(args.limit === undefined ? {} : { limit: args.limit }),
+        });
+      },
+    })
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "feishu_contact_search",
+      description:
+        "按名字或关键词搜索通讯录里的同事，返回 open_id、所在部门，以及与之单聊的会话 id（chat_id）。" +
+        "拿着 chat_id 就能交给 feishu_chat_messages 读聊天记录。只在之前聊过天时才有 chat_id。",
+      parameters: {
+        query: { type: "string", required: true, description: "姓名或关键词，最多 50 个字符" },
+        limit: { type: "number", description: "返回条数，1 到 30，缺省 10" },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            hits: {
+              type: "array",
+              required: true,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  openId: { type: "string", required: true },
+                  name: { type: "string", required: true },
+                  chatId: { type: "string" },
+                  department: { type: "string" },
+                },
+              },
+            },
+            hasMore: { type: "boolean", required: true },
+            notice: { type: "string", description: "接口返回的额外提示，例如权限或可见范围说明" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.hits.length === 0) {
+            return [{ type: "text", text: "没有匹配的联系人" }];
+          }
+          const lines = value.hits.map((hit, index) => {
+            const head = `${index + 1}. ${hit.name}${hit.department === undefined ? "" : `（${hit.department}）`}`;
+            const detail = [`open_id: ${hit.openId}`, hit.chatId === undefined ? "还没有单聊会话" : `单聊 chat_id: ${hit.chatId}`];
+            return `${head}\n   ${detail.join("\n   ")}`;
+          });
+          if (value.notice !== undefined) lines.push(value.notice);
+          if (value.hasMore) lines.push("还有更多联系人，可以收窄关键词或调大 limit");
+          return [{ type: "text", text: lines.join("\n") }];
+        },
+      },
+      async execute(args) {
+        const sdkContacts = await contacts();
+        return searchContacts(sdkContacts, {
+          query: args.query,
           ...(args.limit === undefined ? {} : { limit: args.limit }),
         });
       },

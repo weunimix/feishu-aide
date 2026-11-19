@@ -92,6 +92,8 @@
         "anchor": "5-工具面",
         "heading": "5. 工具面",
         "src": [
+          "src/core/contacts.ts",
+          "src/core/sdk-contacts.ts",
           "src/plugin.ts"
         ]
       },
