@@ -71,8 +71,10 @@
         "anchor": "4-维护性",
         "heading": "4. 维护性",
         "src": [
+          "src/core/feishu-json.ts",
           "src/core/markdown.ts",
           "src/core/sdk-reader.ts",
+          "src/core/sdk-writer.ts",
           "src/plugin.ts"
         ]
       },
@@ -86,7 +88,11 @@
       {
         "anchor": "6-写回语义",
         "heading": "6. 写回语义",
-        "src": []
+        "src": [
+          "src/core/sdk-writer.ts",
+          "src/core/write-plan.ts",
+          "src/core/write.ts"
+        ]
       },
       {
         "anchor": "7-配置",
@@ -155,8 +161,8 @@
     ],
     "README.md": [
       {
-        "anchor": "目标能力尚未实现",
-        "heading": "目标能力（尚未实现）",
+        "anchor": "能力与进度",
+        "heading": "能力与进度",
         "src": []
       },
       {

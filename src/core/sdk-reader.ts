@@ -2,6 +2,7 @@ import * as lark from "@larksuiteoapi/node-sdk";
 import type { BlockPage, DocReader, DocumentMeta } from "./docx.js";
 import type { FeishuBlock } from "./markdown.js";
 import type { Domain } from "./device-flow.js";
+import { asRecord, unwrap } from "./feishu-json.js";
 
 /**
  * SDK 适配层。整个插件只有这里直接依赖 `@larksuiteoapi/node-sdk`，
@@ -15,22 +16,6 @@ export interface ReaderOptions {
   userAccessToken: () => Promise<string>;
   /** 测试注入用：把 SDK 指向本地 fake server。 */
   domainOverride?: string;
-}
-
-type Json = Record<string, unknown>;
-
-function asRecord(value: unknown): Json {
-  return value && typeof value === "object" ? (value as Json) : {};
-}
-
-function unwrap(response: unknown): Json {
-  const body = asRecord(response);
-  const data = asRecord(body.data);
-  if (typeof body.code === "number" && body.code !== 0) {
-    const message = typeof body.msg === "string" ? body.msg : "飞书接口返回错误";
-    throw new Error(`飞书接口错误（code=${body.code}）：${message}`);
-  }
-  return Object.keys(data).length > 0 ? data : body;
 }
 
 const PAGE_SIZE = 500;

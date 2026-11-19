@@ -8,3 +8,7 @@ export { extractDocRef, readDocument, DocReadError } from "./core/docx.js";
 export type { DocReader, DocumentSnapshot } from "./core/docx.js";
 export { renderMarkdown, summarizeBlocks } from "./core/markdown.js";
 export type { FeishuBlock } from "./core/markdown.js";
+export { planWrite, summarizePlan, WriteError } from "./core/write-plan.js";
+export type { PlannedOp, WriteOp } from "./core/write-plan.js";
+export { runWrite, WriteConflict } from "./core/write.js";
+export type { WriteOutcome, WritePolicy, WriteRequest } from "./core/write.js";

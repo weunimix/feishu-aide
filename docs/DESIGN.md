@@ -59,7 +59,7 @@ MVP 范围：
 Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown，写工具只接受块级操作。
 
 ## 4. 维护性
-<!-- src: src/core/sdk-reader.ts, src/core/markdown.ts, src/plugin.ts -->
+<!-- src: src/core/sdk-reader.ts, src/core/sdk-writer.ts, src/core/feishu-json.ts, src/core/markdown.ts, src/plugin.ts -->
 
 依赖面刻意收窄到平台两个 API：`ctx.tools.register`（工具注册）与壳层传入的配置（`resolveConfig`）。不依赖客户端包，不依赖插件管理器内部结构，不依赖 `ctx.agents` 的内部字段。
 
@@ -82,30 +82,30 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 
 工具是插件唯一的产品面。命名用飞书自身的词汇，不造新词。
 
-| 工具 | 用途 | 读/写 |
-|---|---|---|
-| `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope | 读 |
-| `feishu_auth_login` | 发起设备流授权，返回验证地址与用户码 | 写（本地凭据） |
-| `feishu_doc_read` | 读文档或 wiki 节点，返回块、版本与 Markdown | 读 |
-| `feishu_doc_search` | 按关键词搜索文档与 wiki | 读 |
-| `feishu_chat_messages` | 按会话与时间区间读消息 | 读 |
-| `feishu_doc_write` | 按块级操作写回或新建文档 | 写 |
+| 工具 | 用途 | 读/写 | 状态 |
+|---|---|---|---|
+| `feishu_auth_status` | 查询授权状态、过期时间、已授予的 scope | 读 | 已实现 |
+| `feishu_auth_login` | 发起设备流授权，返回验证地址与用户码 | 写（本地凭据） | 已实现 |
+| `feishu_doc_read` | 读 docx 文档，返回块、版本与 Markdown | 读 | 已实现 |
+| `feishu_doc_write` | 按块级操作写回或新建文档 | 写 | 已实现 |
+| `feishu_doc_search` | 按关键词搜索文档与 wiki | 读 | 未实现 |
+| `feishu_chat_messages` | 按会话与时间区间读消息 | 读 | 未实现 |
 
-读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`。写工具接受 `document_id`、`base_revision`、`operations`，其中每个操作指定 `op`、`block_id`、内容。
+读工具返回结构固定包含 `document_id`、`revision_id`、`title`、`blocks`（含 `block_id`）、`markdown`、`truncated`。写工具接受 `ref`（文档 URL 或 token，新建文档时可省）、`baseRevision`、`ops` 与 `apply`；每个操作用 `op` 指明种类，其余字段随操作而定。
 
 授权类工具只返回状态，不返回 token 值。
 
 ## 6. 写回语义
-<!-- src: none -->
+<!-- src: src/core/write.ts, src/core/write-plan.ts, src/core/sdk-writer.ts -->
 
 写回分三步：读时记录版本与块、生成变更计划、校验后执行。
 
 - **身份**：只用 user token。写回的作者必须是用户本人。
-- **版本**：`base_revision` 与当前版本不一致时拒绝执行，返回当前版本与重新读取的建议，不静默覆盖。
-- **粒度**：以块为单位。支持修改块内容、插入块、删除块、新建文档；不支持整篇文本覆盖。
-- **幂等**：每次写操作带客户端幂等键；重试同一请求不会重复插入块。
+- **版本**：`baseRevision` 与当前版本不一致时拒绝执行，返回当前版本与重新读取的建议，不静默覆盖。
+- **粒度**：以块为单位。当前实现支持替换文本块、在指定父块下插入文本块、新建文档；删除块与整篇文本覆盖都不支持。
+- **幂等**：每次写操作带按内容计算的客户端幂等键；重试同一请求不会重复插入块。
 - **确认**：由配置决定。`diff` 先返回变更计划等确认；`always` 每次写都要确认；`never` 直接执行，仅靠版本校验兜底。
-- **失败**：部分成功必须如实报告哪些块已写入，不谎报整体成功。
+- **失败**：部分成功必须如实报告哪些操作已写入，不谎报整体成功。
 
 ## 7. 配置
 <!-- src: src/core/config.ts -->
