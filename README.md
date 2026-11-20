@@ -2,7 +2,7 @@
 
 DSH 插件：把飞书文档、wiki 与会话消息接进 agent 会话。读、改、写回都在对话里完成，不需要打开飞书客户端，也没有独立的客户端界面。
 
-当前版本 0.2.2。已实现授权、文档与 wiki 读取、文档搜索、联系人搜索、会话消息读取与块级写回；读文档按版本缓存。
+当前版本 0.2.3。已实现授权、文档与 wiki 读取、文档搜索、联系人搜索、会话消息读取与块级写回；读文档按版本缓存。
 
 ## 它能做什么
 
@@ -22,13 +22,13 @@ DSH 插件：把飞书文档、wiki 与会话消息接进 agent 会话。读、�
 
 ```sh
 dsh plugin --profile desktop add \
-  https://github.com/weunimix/feishu-aide/releases/download/v0.2.2/feishu-aide-0.2.2.tgz \
+  https://github.com/weunimix/feishu-aide/releases/download/v0.2.3/feishu-aide-0.2.3.tgz \
   --allow-build=protobufjs
 ```
 
 `--allow-build=protobufjs` 是必须的：`@larksuiteoapi/node-sdk` 的传递依赖带一个 postinstall，pnpm 默认拦下它并让安装失败。也可以在 DSH 插件页里安装同一个 tarball 地址，页面会提示「允许这些脚本并重试」。
 
-Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c feishu-aide-0.2.2.tgz.sha256`。
+Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c feishu-aide-0.2.3.tgz.sha256`。
 
 安装后重启 DSH，插件在宿主进程内加载，不需要常驻进程或本地服务。
 
