@@ -8,3 +8,5 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.md text eol=lf
+# 许可证全文按原样保存：CRLF 会让逐字比对上游文本时出现无意义的差异。
+LICENSE text eol=lf

@@ -9,8 +9,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # 不限制 base 分支：堆叠 PR（基于另一个未合并分支）同样需要验证，
+  # 否则「等到 rebase 到 main 再跑」会把问题推迟到合并前最后一次改动。
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -27,6 +28,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # 卡住的步骤默认能占满 6 小时；这套检查本机与 CI 都在 1 分钟内跑完。
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
@@ -56,7 +59,12 @@ jobs:
       - name: Doc block map
         run: node scripts/check-docs.mjs
 
-      - run: pnpm install --frozen-lockfile
+      # 版本漂移：README 的安装地址指向的 tag/文件名必须等于 package.json 的版本。
+      # 防的失败模式是「改了版本号、忘了改 README」，用户照 README 装到旧 tarball。
+      - name: Release version
+        run: node scripts/check-release-version.mjs
+
+      - run: pnpm install --frozen-lockfile --engine-strict
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build

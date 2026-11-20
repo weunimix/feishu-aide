@@ -222,7 +222,9 @@
           ".github/dependabot.yml",
           ".github/workflows/branch-cleanup.yml",
           ".github/workflows/ci.yml",
+          ".github/workflows/release.yml",
           "scripts/check-docs.mjs",
+          "scripts/check-release-version.mjs",
           "scripts/check-secrets.mjs",
           "scripts/doc-impact.mjs",
           "scripts/prune-merged-branches.mjs"

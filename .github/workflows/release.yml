@@ -1,0 +1,82 @@
+name: Release
+
+# 手工打 tag、手工上传 tarball 容易出现两种事故：tag 指到一个没通过 CI 的提交，
+# 或者资产是本地机器上打出来的包、与 tag 的内容不一致。这里在 tag 上重跑一次
+# 构建，用同一次运行产出的 tarball 建 Release，并附 SHA-256 供用户核对。
+#
+# 触发方式：
+#   - 推 vX.Y.Z tag（版本必须与 package.json 一致，否则第一步就失败）；
+#   - workflow_dispatch 重跑某个已有 tag（例如发布失败后补发）。
+#
+# 供应链：action 固定到完整 commit SHA，升级由 Dependabot 提 PR。
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 要发布的已存在 tag（例如 v0.2.2）
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      # tag 与 package.json 版本不一致时立刻失败：否则 Release 里挂的资产名
+      # （feishu-aide-<version>.tgz）会和 tag 对不上，用户按 tag 找包会 404。
+      - name: 校验 tag 与版本
+        run: node scripts/check-release-version.mjs --tag "$RELEASE_TAG"
+
+      - run: pnpm install --frozen-lockfile --engine-strict
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+      - run: node scripts/check-docs.mjs
+      - run: pnpm build
+      - run: pnpm pack:check
+
+      - name: 打包并生成校验和
+        run: |
+          set -euo pipefail
+          pnpm pack
+          TARBALL="feishu-aide-${RELEASE_TAG#v}.tgz"
+          test -f "$TARBALL"
+          sha256sum "$TARBALL" > "$TARBALL.sha256"
+          cat "$TARBALL.sha256"
+
+      # 已存在 Release 时只替换资产（重跑场景），不覆盖手写的发布说明。
+      - name: 创建或更新 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TARBALL="feishu-aide-${RELEASE_TAG#v}.tgz"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$TARBALL" "$TARBALL.sha256" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$TARBALL" "$TARBALL.sha256" \
+              --title "$RELEASE_TAG" --generate-notes --verify-tag
+          fi

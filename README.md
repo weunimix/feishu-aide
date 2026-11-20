@@ -28,6 +28,8 @@ dsh plugin --profile desktop add \
 
 `--allow-build=protobufjs` 是必须的：`@larksuiteoapi/node-sdk` 的传递依赖带一个 postinstall，pnpm 默认拦下它并让安装失败。也可以在 DSH 插件页里安装同一个 tarball 地址，页面会提示「允许这些脚本并重试」。
 
+Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c feishu-aide-0.2.2.tgz.sha256`。
+
 安装后重启 DSH，插件在宿主进程内加载，不需要常驻进程或本地服务。
 
 ## 授权
@@ -111,15 +113,16 @@ token 与应用密钥不会出现在工具返回值和日志里，授权类工�
 
 ## 开发
 
-<!-- src: scripts/check-secrets.mjs, scripts/prune-merged-branches.mjs, scripts/check-docs.mjs, scripts/doc-impact.mjs, .github/workflows/ci.yml, .github/workflows/branch-cleanup.yml, .github/dependabot.yml -->
+<!-- src: scripts/check-secrets.mjs, scripts/prune-merged-branches.mjs, scripts/check-docs.mjs, scripts/doc-impact.mjs, scripts/check-release-version.mjs, .github/workflows/ci.yml, .github/workflows/release.yml, .github/workflows/branch-cleanup.yml, .github/dependabot.yml -->
 
 需要 Node 24 + pnpm 10：
 
 ```sh
 pnpm install
-pnpm check        # secret scan + 文档块映射 + typecheck + 单测 + 策略测试
+pnpm check         # secret scan + 文档块映射 + typecheck + 单测 + 策略测试
 pnpm build
-pnpm pack:check   # 校验 pnpm pack 的产物内容
+pnpm pack:check    # 校验 pnpm pack 的产物内容
+pnpm release:check # 校验 README 安装地址里的版本与 package.json 一致
 ```
 
 改 `src/**` 前先查影响哪些文档块：
@@ -129,6 +132,8 @@ pnpm docs:impact src/core/auth.ts
 ```
 
 CI 在 ubuntu 与 windows 双 OS 上跑同一套检查，不读取任何飞书凭证；workflow 里的 action 固定到完整 commit SHA，由 Dependabot 维护。已合并分支由 `branch-cleanup.yml` 清理，默认 dry run。
+
+发版：改完 `package.json` 的版本并同步 README 的安装地址，推 `vX.Y.Z` tag 即可，`release.yml` 会在该 tag 上重新构建、打包、附 SHA-256 并创建 Release。
 
 ## 文档
 
@@ -143,4 +148,6 @@ CI 在 ubuntu 与 windows 双 OS 上跑同一套检查，不读取任何飞书�
 
 <!-- src: none -->
 
-MIT © 2026 weunimix。见 [LICENSE](LICENSE)。
+AGPL-3.0-only © 2026 weunimix。见 [LICENSE](LICENSE)。
+
+可以自由使用与修改；如果把修改后的版本分发出去，或把它作为网络服务提供给别人用，必须公开对应的源码。

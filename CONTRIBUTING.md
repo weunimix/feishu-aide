@@ -111,4 +111,4 @@ pnpm build
 
 ## 9. 许可
 
-贡献即同意以 MIT 许可发布，见 [LICENSE](LICENSE)。
+贡献即同意以 AGPL-3.0-only 许可发布，见 [LICENSE](LICENSE)。
