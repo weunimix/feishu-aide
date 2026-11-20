@@ -1,6 +1,6 @@
 # 仓库设置基线（Repo settings as code）
 
-Status: 2026-11-14 已应用并逐条核对（ruleset `27264463` / `27264465`）。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；数值变化没有 diff，靠本文件的核对记录与 `pnpm repo:audit` 手动比对兜底（基线 `docs/repo-settings.baseline.json`）。**
+Status: 2026-11-20 已应用并逐条核对（ruleset `27689078` / `27689080`）。**下列设置只存在于 GitHub 仓库设置里，不在 git 历史中；数值变化没有 diff，靠本文件的核对记录与 `pnpm repo:audit` 手动比对兜底（基线 `docs/repo-settings.baseline.json`）。**
 
 为什么要有这份文件：分支保护、合并方式、secret scanning 这些开关不随 `git clone` 走，在 UI 上改一次没有任何 diff，门禁被拆了也没人知道。P1 已加 `pnpm repo:audit` 用 API 断言这些值（见 §8），但它是**手动命令、不设定时任务**：改完仓库设置后必须跑一次。
 
@@ -64,7 +64,7 @@ gh api repos/weunimix/feishu-aide/rulesets
 gh api repos/weunimix/feishu-aide/rulesets/<id>
 ```
 
-现状（2026-11-14）：规则集 `main-protection`（id `27264463`），`enforcement: active`，`bypass_actors` 为空（管理员也不绕过）；`strict_required_status_checks_policy: true`；`allowed_merge_methods: ["squash"]`。注意 GitHub 默认开启了 `require_extra_approval_for_unattributed_changes`：将来的机器人/未归属提交若被判定为 unattributed，合入需要额外 approve，届时要么调整该参数，要么保证提交带有归属。
+现状（2026-11-20）：规则集 `main-protection`（id `27689078`），`enforcement: active`，`bypass_actors` 为空（管理员也不绕过）；`strict_required_status_checks_policy: true`；`allowed_merge_methods: ["squash"]`。注意 GitHub 默认开启了 `require_extra_approval_for_unattributed_changes`：将来的机器人/未归属提交若被判定为 unattributed，合入需要额外 approve，届时要么调整该参数，要么保证提交带有归属。
 
 漂移基线：`docs/repo-settings.baseline.json`，由 `pnpm repo:audit:write` 从线上生成（含两个 ruleset 的归一化结果），不再单独存 `rulesets/main.json`。
 
@@ -78,7 +78,7 @@ gh api repos/weunimix/feishu-aide/rulesets/<id>
 | 保护 `v*` | 禁止删除、禁止强制更新 | 发布标签一旦推出就不该被改指向 |
 | 创建权限 | 维护者手动 | 发布流程落地后再自动化 |
 
-现状（2026-11-14）：规则集 `tag-protection`（id `27264465`），匹配 `refs/tags/v*`，禁止删除与更新。**仓库尚无 tag，规则未实测**；第一个 `v*` tag 出现时再验证一次。
+现状（2026-11-20）：规则集 `tag-protection`（id `27689080`），匹配 `refs/tags/v*`，禁止删除与更新。`v0.2.3` 发布时实测过：删除旧 tag 需要临时把 `enforcement` 置为 `disabled`，恢复后新 tag 无法被改写。
 
 ## 4. GitHub Actions
 <!-- src: none -->
@@ -190,3 +190,4 @@ gh api repos/weunimix/feishu-aide/milestones -f title="P4 docs SSOT + contracts 
 | 2026-11-15 | weunimix / agent（gh api） | 新增 `scripts/check-repo-settings.mjs` 与 `docs/repo-settings.baseline.json`，本地 `pnpm repo:audit` 比对与基线一致。同日撤掉 `repo-audit.yml` 定时任务与 PAT 要求：单人仓库改为改设置后手动跑，理由见 §8。 |
 | 2026-11-15 | weunimix / agent（gh api） | Ruleset `27264463` 增加 `Branch name` 必需 check（机器人分支与 fork 放行）；新增 `pr-size.yml` 只打 `size/*` 标签，不设必需 check。回读确认 contexts 为四项。 |
 | 2026-11-20 | weunimix / agent（gh api） | 仓库从组织 `mmw-devs/feishu-aide` 转移到个人账号 `weunimix/feishu-aide`；两个 ruleset（`27264463` / `27264465`）随仓库保留、id 不变，旧地址由 GitHub 重定向。本文档与脚本里的 owner 同步为 `weunimix`。 |
+| 2026-11-20 | weunimix / agent（gh api） | 仓库重建（历史重写）后 ruleset id 变化为 `27689078` / `27689080`，规则内容不变；重建时丢失的 `allow_auto_merge` 与 private vulnerability reporting 已重新开启，`pnpm repo:audit` 复核与基线一致。`v0.2.3` 是重建后的第一个 Release，tag 保护实测有效。 |
