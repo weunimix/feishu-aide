@@ -3,13 +3,13 @@
 给在本仓库工作的 agent 和自动化工具：这里写**必须遵守的约束**和**如何自证**。
 面向人的协作流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；CI 的取舍理由见 [docs/CI-REUSE-PLAN.md](docs/CI-REUSE-PLAN.md)。
 
-## 项目现状（P1）
+## 项目现状
 
-feishu-aide 为 mmw-tools / DeepSeek Harness agent 提供飞书文档与 wiki 的读取、增量缓存和本地检索，最终形态是 core library + stdio MCP server。
+feishu-aide 是 DeepSeek Harness 插件：在 agent 会话里读取飞书文档、wiki、会话消息与联系人，并把修改按块写回。形态是 core library + DSH 插件装配层；不提供独立 UI、常驻进程或 MCP server（形态决策见 [docs/DESIGN.md](docs/DESIGN.md) §9）。
 
-- 已有：仓库骨架、离线 CI（双 OS）、secret scan、分支清理、路径安全模块与单测、文档块 `src` 映射与 `doc-map.json`。
-- **没有**：飞书客户端、同步、索引、检索、MCP server。除 [README.md](README.md) 和计划文档明确写出的内容外，不要假设某个能力已经存在。
-- 计划与验收标准只在 [docs/CI-REUSE-PLAN.md](docs/CI-REUSE-PLAN.md)。要做超出当前阶段的事，先改计划再改代码。
+- 已实现能力以 [README.md](README.md) 的“它能做什么”和工具表为唯一清单；架构与数据域以 [docs/DESIGN.md](docs/DESIGN.md) 为唯一来源；CI 取舍与阶段验收以 [docs/CI-REUSE-PLAN.md](docs/CI-REUSE-PLAN.md) 为准。
+- 不要把“计划中”当“已存在”：未在 README 或上述文档写明的能力，一律视为不存在，不要凭推测调用或断言。
+- 超出当前阶段的工作，先改 [docs/DESIGN.md](docs/DESIGN.md) 与计划文档，再改代码。
 
 ## 硬约束
 
@@ -55,7 +55,7 @@ pnpm build
 | `docs/**`、`README.md` | 与现状一致；状态行过时就要改，下一个人/agent 会照着它做；块级 `src` 标注与 `docs/doc-map.json` 同步（`pnpm docs:map`） |
 | 根配置（`package.json`、`tsconfig*`、lockfile） | 说明动机；lockfile 与 `package.json` 同一次提交 |
 
-## 环境事实（2026-11-15，可能过期）
+## 环境事实（2026-11-20 复核，可能过期）
 
 - 本仓库**未纳入 mmw-tools 插件工作区**（`mmw_tools_status` 显示 `workspace: unmanaged`），不要调用该插件的仓库工具；直接在工作副本操作，推送前人工确认。
 - Windows 是主开发环境，CI 覆盖 Linux + Windows。路径、大小写、CRLF、Windows 保留名是真实 bug 源，不能只在 Linux 上验证。
@@ -67,6 +67,6 @@ pnpm build
 
 1. `pnpm check` 与 `pnpm build` 通过（或 PR 里写明未跑原因）；
 2. 新增/修改的行为有测试，且测试在实现回退时真的会红；
-3. 文档与代码一致（README 状态行、计划文档、注释、文档块 `src` 标注与生成的 `doc-map.json`）；
+3. 文档与代码一致（README 状态行、设计文档的数据域与决策、计划文档、注释、文档块 `src` 标注与生成的 `doc-map.json`）；
 4. 没有把秘密、缓存、构建产物、租户数据带进提交；
 5. PR 描述里有可复核的验证证据（命令 + 结果，或 CI run 链接）。
