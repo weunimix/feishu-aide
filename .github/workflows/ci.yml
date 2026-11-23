@@ -25,8 +25,13 @@ jobs:
   verify:
     strategy:
       fail-fast: false
+      # 三个 OS 跑同一套检查。防的失败模式：本仓库在 Windows 上开发、此前只在
+      # Linux + Windows 验证，macOS 用户的路径大小写、POSIX 权限位（0600）、
+      # CRLF 与 locale 差异没有任何门禁；插件是宿主进程内加载的纯 JS 包，
+      # 这些差异一旦回归只会暴露在真实 macOS 用户那里。加一个 job 的代价是
+      # 几分钟 runner 时间，比在用户机器上发现便宜。
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     # 卡住的步骤默认能占满 6 小时；这套检查本机与 CI 都在 1 分钟内跑完。
     timeout-minutes: 20

@@ -42,7 +42,7 @@
 
 1. **先开 draft PR**：尽早暴露方向，也让 CI 尽早跑。
 2. 填完模板，尤其是“验证证据”和“风险与回滚”；用 `Closes #<issue>` 关联 issue。
-3. ready 的条件：两个 OS 的 CI 全绿、分支已同步 `main`、review 意见已解决。
+3. ready 的条件：三个 OS 的 CI 全绿、分支已同步 `main`、review 意见已解决。
 4. 合并方式：squash。合并人确认 PR 标题符合提交规范。
 5. 合并后 `main` 变红：**先 revert**，再排查。不要在红的主干上继续叠改动。
 
@@ -56,6 +56,8 @@
 | `Branch name` | [.github/workflows/branch-name.yml](.github/workflows/branch-name.yml) |
 
 分支保护按 **job 名逐字匹配**，改名等于改门禁：必须在同一 PR 里更新仓库规则（见 [docs/repo-settings.md](docs/repo-settings.md)）。
+
+`verify (macos-latest)` 已随 CI 矩阵运行，但暂未列入必需 check（观察期；加入步骤见 [docs/repo-settings.md](docs/repo-settings.md)）。ready 前仍要求三个 OS 全绿。
 
 ### 评审关注点
 
@@ -81,7 +83,7 @@ pnpm docs:impact src/core/auth.ts   # 改源码前查受影响的文档块
 pnpm build
 ```
 
-- Node 24 + pnpm 10；Windows 上注意 CRLF 与文件名大小写。
+- Node 24 + pnpm 10；Windows 上注意 CRLF 与文件名大小写，macOS 上注意 POSIX 权限位（凭据文件 0600）与大小写不敏感文件系统；CI 三平台都会跑。
 - 测试一律使用临时目录；不要把缓存目录指到仓库里。
 - 真实飞书凭证只用于将来的 live canary；本地调试也不要提交 `.env`。
 
