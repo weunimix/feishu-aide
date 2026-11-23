@@ -20,7 +20,7 @@ Status: v3 (2026-11-20)。本文只讲 CI 与仓库工程；产品形态、数�
 | `.gitignore` | 忽略依赖、秘密、日志、本地缓存 | 新成员或 agent 顺手提交 `.env`、私钥、本地数据 |
 | 分支清理 | 只删"PR 已合并、无 base 之外提交、无 open PR 引用、非保护分支、合并超过 7 天"的分支，默认 dry run | 每个任务开一条分支，几个月后几百条，人工清理又怕误删 |
 | secret scan | 扫描凭证形态，拒绝 `.env`、私钥、本地数据库被跟踪；命中时不打印值 | 凭证泄漏比代码 bug 更贵 |
-| 双 OS 矩阵 + `fail-fast: false` | ubuntu 与 windows 并行，一边红不取消另一边 | Windows 是主开发环境，路径、大小写、CRLF 差异只在合入后暴露 |
+| 三 OS 矩阵 + `fail-fast: false` | ubuntu、windows 与 macos 并行，一边红不取消另一边 | Windows 是主开发环境，macOS 是插件用户的常见平台；路径、大小写、CRLF 与 POSIX 权限差异只在合入后暴露 |
 | 最小权限 + PR 不引用 secret | 工作流默认 `contents: read` | 恶意 PR 改一行 workflow 就可能把凭证打出来 |
 | action 固定到完整 SHA | 行尾注释版本号，依赖 Dependabot 升级 | 标签可被上游移动，供应链攻击面 |
 
@@ -107,3 +107,4 @@ PR 的 base 分支不设限制：基于未合并分支的堆叠 PR 同样要跑�
 - 2026-11-20：分发先走 tarball、真实冒烟通过后再发 npm 公共包；`build` 前置清空 `dist`，`pack:check` 进 CI。
 - 2026-11-20：接入方式改为「首次使用自动注册个人应用 + 设备流授权」，自建应用降级为可选覆盖；搜索因需管理员审批而列为可选能力，验收项随之调整。
 - 2026-11-20：许可证由 MIT 改为 AGPL-3.0-only；发版交给 `release.yml`（tag 触发），并加 README 版本一致性检查、job 超时与 `engine-strict`。
+- 2026-11-24：CI 矩阵加入 macOS（`macos-latest`），此前只有 ubuntu + windows。理由：仓库此前按 Windows 主开发、Linux 验证，macOS 从未进过门禁，而插件没有任何 Windows-only 运行时代码；POSIX 权限位（凭据 0600）与大小写/CRLF 差异需要 macOS 上的实际执行来兜底。同时在单测里补 POSIX 权限断言（Windows 跳过），让该 job 有判别力。

@@ -1,5 +1,5 @@
-# The repository is developed on Windows and verified on Linux CI. Keep LF in
-# scripts, workflows and docs so a CRLF checkout cannot break a shebang or YAML.
+# 仓库在 Windows 上开发，CI 覆盖 Linux 与 macOS。脚本、workflow 与文档强制 LF，
+# 否则 CRLF 检出会让 shebang 变成 `node\r`，YAML 也可能解析失败。
 *.sh text eol=lf
 *.mjs text eol=lf
 *.js text eol=lf

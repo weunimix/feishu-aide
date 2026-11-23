@@ -55,10 +55,10 @@ pnpm build
 | `docs/**`、`README.md` | 与现状一致；状态行过时就要改，下一个人/agent 会照着它做；块级 `src` 标注与 `docs/doc-map.json` 同步（`pnpm docs:map`） |
 | 根配置（`package.json`、`tsconfig*`、lockfile） | 说明动机；lockfile 与 `package.json` 同一次提交 |
 
-## 环境事实（2026-11-20 复核，可能过期）
+## 环境事实（2026-11-24 复核，可能过期）
 
 - 本仓库**未纳入 mmw-tools 插件工作区**（`mmw_tools_status` 显示 `workspace: unmanaged`），不要调用该插件的仓库工具；直接在工作副本操作，推送前人工确认。
-- Windows 是主开发环境，CI 覆盖 Linux + Windows。路径、大小写、CRLF、Windows 保留名是真实 bug 源，不能只在 Linux 上验证。
+- Windows 是主开发环境，CI 覆盖 Linux、Windows 与 macOS。路径、大小写、CRLF、Windows 保留名与 POSIX 权限位是真实 bug 源，不能只在单一平台上验证。
 - Node 24 + pnpm 10，以 `package.json` 的 `engines` / `packageManager` 为准。
 
 ## 完成定义

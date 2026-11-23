@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -73,6 +73,45 @@ test("并发保存不会留下半截 JSON", async () => {
     const raw = await readFile(path.join(dir, "tokens.json"), "utf8");
     assert.doesNotThrow(() => JSON.parse(raw));
     assert.equal((await store.load())?.accessToken, "a3");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// 这条只守临时文件残留：save 用完 tmp 后目录里只剩 tokens.json；
+// 它不证明 tmp+rename 的原子替换语义（那需要注入 rename 失败，当前没有覆盖）。
+test("保存后不留临时文件", async () => {
+  const dir = await tempDir();
+  try {
+    await new FileTokenStore(dir).save({ accessToken: "at", expiresAt: Date.now() + 1000 });
+    assert.deepEqual(await readdir(dir), ["tokens.json"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// 权限位在 Windows 上不适用（stat 不反映 ACL），显式跳过而不是断言一个假值。
+test("POSIX 上令牌文件权限为 0600", { skip: process.platform === "win32" }, async () => {
+  const dir = await tempDir();
+  try {
+    await new FileTokenStore(dir).save({ accessToken: "at", expiresAt: Date.now() + 1000 });
+    assert.equal(((await stat(path.join(dir, "tokens.json"))).mode & 0o777).toString(8), "600");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("POSIX 上覆盖已有的宽松权限文件后仍是 0600", { skip: process.platform === "win32" }, async () => {
+  const dir = await tempDir();
+  try {
+    const file = path.join(dir, "tokens.json");
+    await writeFile(file, '{"accessToken":"old","expiresAt":1}', "utf8");
+    // tmp + rename 会替换 inode；先显式放宽到 0644，确认替换后不带回旧权限。
+    await chmod(file, 0o644);
+    assert.equal(((await stat(file)).mode & 0o777).toString(8), "644");
+
+    await new FileTokenStore(dir).save({ accessToken: "new", expiresAt: Date.now() + 1000 });
+    assert.equal(((await stat(file)).mode & 0o777).toString(8), "600");
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

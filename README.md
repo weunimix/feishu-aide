@@ -28,7 +28,9 @@ dsh plugin --profile desktop add \
 
 `--allow-build=protobufjs` 是必须的：`@larksuiteoapi/node-sdk` 的传递依赖带一个 postinstall，pnpm 默认拦下它并让安装失败。也可以在 DSH 插件页里安装同一个 tarball 地址，页面会提示「允许这些脚本并重试」。
 
-Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c feishu-aide-0.2.3.tgz.sha256`。
+上面的命令需要本机有 `dsh` CLI；DSH Desktop 桌面版（macOS 版实测）不自带 CLI，用它时走插件页安装同一个 tarball 地址即可，装的是同一个发布物。
+
+Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c feishu-aide-0.2.3.tgz.sha256`；macOS 上如果没有 `sha256sum`，用 `shasum -a 256 -c feishu-aide-0.2.3.tgz.sha256`。
 
 安装后重启 DSH，插件在宿主进程内加载，不需要常驻进程或本地服务。
 
@@ -41,7 +43,7 @@ Release 里同时提供 `.sha256`，需要核对产物时可以 `sha256sum -c fe
 1. 第一次返回创建应用的确认地址，在飞书页面上确认后，插件自动注册一个个人应用，凭据存到本地；
 2. 第二次返回授权地址与用户码，确认后得到你本人身份的用户令牌。
 
-全程不需要进入开放平台，也不需要租户管理员权限。凭据与缓存都在 `$DSH_HOME/feishu-aide/` 下：`app.json` 是应用凭据，`tokens.json` 是用户令牌，权限均为 0600。
+全程不需要进入开放平台，也不需要租户管理员权限。凭据与缓存都在 `$DSH_HOME/feishu-aide/` 下：`app.json` 是应用凭据，`tokens.json` 是用户令牌，权限均为 0600（Windows 上由 ACL 控制）。`DSH_HOME` 由宿主注入，以宿主实际值为准；macOS 版 DSH Desktop 下实测是 `~/Library/Application Support/dsh-desktop/harness`，凭据会落在它的 `feishu-aide/` 子目录。
 
 组织已有自建应用时，可以把配置改成 `auth.mode: self-hosted` 并填写该应用的 App ID / App Secret。
 
@@ -131,7 +133,7 @@ pnpm release:check # 校验 README 安装地址里的版本与 package.json 一�
 pnpm docs:impact src/core/auth.ts
 ```
 
-CI 在 ubuntu 与 windows 双 OS 上跑同一套检查，不读取任何飞书凭证；workflow 里的 action 固定到完整 commit SHA，由 Dependabot 维护。已合并分支由 `branch-cleanup.yml` 清理，默认 dry run。
+CI 在 ubuntu、windows 与 macos 三个 OS 上跑同一套检查，不读取任何飞书凭证；workflow 里的 action 固定到完整 commit SHA，由 Dependabot 维护。已合并分支由 `branch-cleanup.yml` 清理，默认 dry run。
 
 发版：改完 `package.json` 的版本并同步 README 的安装地址，推 `vX.Y.Z` tag 即可，`release.yml` 会在该 tag 上重新构建、打包、附 SHA-256 并创建 Release。
 

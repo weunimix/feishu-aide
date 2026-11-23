@@ -70,6 +70,8 @@ gh api repos/weunimix/feishu-aide/rulesets/<id>
 
 2026-11-15 起增加 `PR title` 必需 check：改标题会触发 `edited` 重跑，不会出现“改完还红着”的卡死。同日增加 `Branch name` 必需 check（机器人分支、fork PR 放行）；`PR size` 只打 size 标签，不是必需 check。
 
+2026-11-24 起 [ci.yml](../.github/workflows/ci.yml) 的矩阵加入 `macos-latest`，PR 上会出现第三个 `verify (macos-latest)` check。它**暂未**加入必需 check：新 runner 先观察一轮，避免 runner 不稳定直接卡住合并。观察通过后，用 `gh api` 把该 context 加进 ruleset，重跑 `pnpm repo:audit:write` 更新 `docs/repo-settings.baseline.json`，并同步本文 §2 的必需 check 表与 §9 的核对记录；否则 `pnpm repo:audit` 会报基线与线上不一致。
+
 ## 3. Tags
 <!-- src: none -->
 
