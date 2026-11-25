@@ -223,6 +223,7 @@
           ".github/workflows/branch-cleanup.yml",
           ".github/workflows/ci.yml",
           ".github/workflows/release.yml",
+          "scripts/check-audit.mjs",
           "scripts/check-docs.mjs",
           "scripts/check-release-version.mjs",
           "scripts/check-secrets.mjs",

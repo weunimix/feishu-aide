@@ -1,7 +1,7 @@
 version: 2
 
 # 供应链：workflow 里的 action 固定到完整 commit SHA，由 Dependabot 每周
-# 提 PR 更新 pin；npm 依赖（仅 devDependencies）每月一次，合并前照常过 CI。
+# 提 PR 更新 pin；npm 依赖每月一次，分运行时与开发两组，合并前照常过 CI。
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -23,6 +23,16 @@ updates:
     schedule:
       interval: monthly
     groups:
+      # 运行时依赖（package.json 的 dependencies）单独成组。它们随发布物装进
+      # 用户机器：tarball 不带 node_modules，用户在安装时重新解析版本。只配
+      # development 组时，@larksuiteoapi/node-sdk 这类依赖拿不到排期的版本更新
+      # PR，漂移只在发版那一刻才被发现（`^1.76.0` 会把没测过的 1.77.0 直接发给
+      # 用户）。注意 security updates 是独立机制、不受 groups 影响，这里补的是
+      # 常规版本更新。
+      production-dependencies:
+        dependency-type: production
+        patterns:
+          - "*"
       dev-dependencies:
         dependency-type: development
         patterns:
