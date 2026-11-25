@@ -18,7 +18,7 @@ DSH 插件：把飞书文档、wiki 与会话消息接进 agent 会话。读、�
 
 <!-- src: none -->
 
-前置：DSH 0.2.1 线路（插件对宿主声明了 peer 依赖，版本不符会被插件管理器拒绝）。
+前置：DSH 0.2.1–0.2.3 线路，含该线路的预发布版（插件对宿主声明了 peer 依赖，版本不符会被插件管理器拒绝）。
 
 ```sh
 dsh plugin --profile desktop add \
@@ -115,7 +115,7 @@ token 与应用密钥不会出现在工具返回值和日志里，授权类工�
 
 ## 开发
 
-<!-- src: scripts/check-secrets.mjs, scripts/prune-merged-branches.mjs, scripts/check-docs.mjs, scripts/doc-impact.mjs, scripts/check-release-version.mjs, .github/workflows/ci.yml, .github/workflows/release.yml, .github/workflows/branch-cleanup.yml, .github/dependabot.yml -->
+<!-- src: scripts/check-secrets.mjs, scripts/check-audit.mjs, scripts/prune-merged-branches.mjs, scripts/check-docs.mjs, scripts/doc-impact.mjs, scripts/check-release-version.mjs, .github/workflows/ci.yml, .github/workflows/release.yml, .github/workflows/branch-cleanup.yml, .github/dependabot.yml -->
 
 需要 Node 24 + pnpm 10：
 
@@ -125,7 +125,10 @@ pnpm check         # secret scan + 文档块映射 + typecheck + 单测 + 策略
 pnpm build
 pnpm pack:check    # 校验 pnpm pack 的产物内容
 pnpm release:check # 校验 README 安装地址里的版本与 package.json 一致
+pnpm check:audit   # 校验运行时依赖没有 >= high 的已知漏洞（需要网络）
 ```
+
+`pnpm check:audit` 不在 `pnpm check` 里，因为它要访问 registry 的漏洞库；CI 每次都会跑，本地按需跑。
 
 改 `src/**` 前先查影响哪些文档块：
 

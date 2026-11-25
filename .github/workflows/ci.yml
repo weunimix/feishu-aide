@@ -70,6 +70,19 @@ jobs:
         run: node scripts/check-release-version.mjs
 
       - run: pnpm install --frozen-lockfile --engine-strict
+
+      # 运行时依赖漏洞门禁：只看 production 闭包——发布物不带 node_modules，
+      # 用户装到的是 dependencies 解析出的树，devDependencies 的告警（例如经
+      # @deepseek-ai/dsh-tools 传入的 zod）不该让发布门禁变红。防的失败模式是
+      # 上游运行时依赖出了高危漏洞，因为没人盯 registry 而继续随新 tarball
+      # 发出去（用户机器上重新解析版本，CI 不重新解析就发现不了）。
+      # pnpm audit 自己的退出码只表示「有没有任何级别的发现」，阈值判断在脚本
+      # 里，所以用 `|| true` 让脚本成为唯一决策者；命令崩溃或输出不可解析时
+      # 脚本以退出码 2 失败，不会静默放行。
+      - name: Audit production dependencies
+        run: |
+          { pnpm audit --prod --json || true; } | node scripts/check-audit.mjs
+
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build

@@ -65,7 +65,11 @@ Markdown 只是视图，块结构才是内容。读工具返回块与 Markdown�
 
 外部依赖有两个：飞书官方 SDK（`@larksuiteoapi/node-sdk`）与配置 schema 库（`@deepseek-ai/schemastery`，DSH 插件生态通用）。不引入 MCP SDK、不引入文档转换库；块到 Markdown 的渲染由本项目实现，因为它是视图，需要完全可控的降级行为。
 
-宿主侧依赖（`@deepseek-ai/dsh-tools`、`@deepseek-ai/cordis`）以 `peerDependencies` 声明，范围对齐 DSH 0.2.1 线路。插件管理器在安装时做兼容性校验，版本不符直接拒绝加载；这是本插件唯一跟随宿主版本的地方，升级 DSH 后需要同步这两条范围。
+两个运行时依赖都写成精确版本而不是 `^`：发布的 tarball 不带 `node_modules`，用户安装时按 package.json 重新解析，caret 会把没测过的补丁版本直接装到用户机器上（`^1.76.0` 在 1.77.0 发布后就会这样）。升级一个版本必须是显式改动，并跑一次集成测试。
+
+宿主侧依赖（`@deepseek-ai/dsh-tools`、`@deepseek-ai/cordis`）以 `peerDependencies` 声明，插件管理器在安装时做兼容性校验，版本不符直接拒绝加载；这是本插件唯一跟随宿主版本的地方，升级 DSH 后需要同步这两条范围。
+
+`@deepseek-ai/dsh-tools` 的范围写成三段 OR（`>=0.2.1-rc.5 <0.3.0-0 || >=0.2.2-rc.0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0`）而不是一个 caret。原因在 semver 的预发布规则：带预发布标签的版本，只有在比较器集合里存在**同 `major.minor.patch` 的预发布比较器**时才可能满足，所以 `^0.2.1-rc.5` 挡得住 0.2.2-rc.5、0.2.3-alpha.2 这些宿主实际在跑的版本（`next` 与 `alpha` 线路），安装时直接卡在 peer 校验。三段 OR 分别给 0.2.1、0.2.2、0.2.3 提供同 tuple 的预发布边界，并用 `<0.3.0-0` 排除 0.3.0 及以后的预发布——0.3 是没验证过的 breaking 线路。跟随新小版本时要为新 tuple 再加一段，只改第一个数字不生效；改完用真实 semver 逐版本验算，不要凭直觉。
 
 SDK 自身的日志关掉：它记录错误时会带上请求与响应体，正文不能进日志，所以适配层传入一个不接收任何消息的 logger（`LoggerLevel.fatal` 不够——该枚举的 fatal 是 0，SDK 用 `||` 取默认值时会当成没传而落到 info）。错误由适配层上抛，最终只经过工具结果。
 

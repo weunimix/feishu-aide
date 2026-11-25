@@ -38,8 +38,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "pnpm typecheck && pnpm test:unit && pnpm test:policy",
     "test:unit": "tsx --test \"test/**/*.test.ts\"",
-    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs scripts/check-docs.test.mjs scripts/check-pr-title.test.mjs scripts/check-repo-settings.test.mjs scripts/check-branch-name.test.mjs scripts/label-pr-size.test.mjs scripts/check-pack.test.mjs scripts/check-release-version.test.mjs",
+    "test:policy": "node --test scripts/prune-merged-branches.test.mjs scripts/check-secrets.test.mjs scripts/check-docs.test.mjs scripts/check-pr-title.test.mjs scripts/check-repo-settings.test.mjs scripts/check-branch-name.test.mjs scripts/label-pr-size.test.mjs scripts/check-pack.test.mjs scripts/check-release-version.test.mjs scripts/check-audit.test.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
+    "check:audit": "pnpm audit --prod --json | node scripts/check-audit.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "docs:map": "node scripts/check-docs.mjs --write",
     "docs:impact": "node scripts/doc-impact.mjs",
@@ -59,11 +60,11 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",
-    "@larksuiteoapi/node-sdk": "^1.76.0"
+    "@larksuiteoapi/node-sdk": "1.76.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
-    "@deepseek-ai/dsh-tools": "^0.2.1-rc.5"
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.5 <0.3.0-0 || >=0.2.2-rc.0 <0.2.3-0 || >=0.2.3-0 <0.2.4-0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
